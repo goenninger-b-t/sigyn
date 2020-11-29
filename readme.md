@@ -1,4 +1,4 @@
-<img src="https://github.com/goenningerbt/sigyn/raw/master/images/sigyn.png" width="200" height="200"/><h1>
+<img src="https://github.com/goenningerbt/sigyn/raw/main/images/sigyn.png" width="200" height="200"/><h1>
 # SIGYN
 
 ## What Is This?
