@@ -87,7 +87,9 @@
 
 (defmethod %do-connected-p ((self connection))
   (ensure-libsapnwrfc-initialized)
-  (rfc-connection-handle-set-p (connection-handle self)))
+  (let ((connection-handle (connection-handle self)))
+    (if (rfc-connection-handle-set-p connection-handle)
+	(rfc-connection-handle-valid-p connection-handle))))
 
 (defmethod %do-disconnect ((self connection))
   (if (not (cffi:null-pointer-p (connection-handle self)))

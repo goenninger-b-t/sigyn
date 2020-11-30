@@ -51,8 +51,8 @@
 	 (nr-rows (rfc-get-row-count rfc-table-handle)))
     (if (> nr-rows 0)
 	(progn
-	  (rfc-move-to-first-row rfc-table-handle)
 	  (setf (rfc-handle object) rfc-table-handle)
+	  (rfc-move-to-first-row rfc-table-handle)
 	  (setf (rows object) (make-array nr-rows :adjustable nil :fill-pointer 0))
 	  (loop for index from 0 below nr-rows
 		do

@@ -54,7 +54,8 @@
   :rfc-ok)
 
 (defmethod param-set (rfc-container-handle (rfc-type (eql :rfc-numc)) rfc-param-name rfc-length (value number))
-  (rfc-set-int rfc-container-handle rfc-param-name rfc-length))
+  (declare (ignore rfc-length))
+  (rfc-set-int rfc-container-handle rfc-param-name value))
 
 ;; - :RFC-INT4 -
 
