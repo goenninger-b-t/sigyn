@@ -238,12 +238,10 @@
 
 (declaim (inline log-rfc-condition))
 (defun log-rfc-condition (rfc-condition)
-  ;; (tb.core:send (rfc-condition-log-channel) rfc-condition)
-  ;; (log:error "~S" rfc-condition)
-  )
+  (log:error "~A" rfc-condition))
 
 (declaim (inline signal-rfc-condition))
-(defun signal-rfc-condition (rfc-error-info &optional (on-error :signal-error))
+(defun signal-rfc-condition (rfc-error-info &key (on-error :signal-error) (log-condition t))
   (let* ((condition-class (case (group rfc-error-info)
 			    (:abap-application-failure       'abap-application-failure)
 			    (:abap-runtime-failure           'abap-runtime-failure)
@@ -255,6 +253,8 @@
 			    (otherwise                       'rfc-error)))
 	 (condition (make-condition condition-class
 				    :rfc-error-info rfc-error-info)))
+    (if (eql log-condition t)
+	(log-rfc-condition condition))
     (if (eql on-error :signal-error)
 	(error condition)
 	(signal condition)))
@@ -265,7 +265,7 @@
   (let* ((rfc-error-info (make-rfc-error-info-from-sap-rfc-error-info error-info-ptr encoding))
 	 (rc (code rfc-error-info)))
     (if (not (eql rc :rfc-ok))
-	(signal-rfc-condition rfc-error-info on-error))
+	(signal-rfc-condition rfc-error-info :on-error on-error :log-condition t))
     rc))
 
 (declaim (inline rfc-connection-handle-set-p))

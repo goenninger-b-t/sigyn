@@ -19,7 +19,7 @@
 (declaim (inline format-rfc-error-report))
 (defun format-rfc-error-report (rfc-condition)
   (let ((r (rfc-error-info rfc-condition)))
-    (format nil "SIGYN: SAP Netweaver RFC ~A ERROR !~%-> Code: ~S,~%-> Group: ~S,~%-> Key: ~A,~%-> Message: \"~A\",~%-> ABAP Msg Class: \"~A\",~%-> ABAP Msg Type: \"~A\",~%-> ABAP Msg Number: \"~A\",~%-> ABAP Msg V1: \"~A\",~%-> ABAP Msg V2: \"~A\",~%-> ABAP Msg V3: \"~A\",~%-> ABAP MSg V4: \"~A\""
+    (format nil "SIGYN: ~A !~%-> Code: ~S,~%-> Group: ~S,~%-> Key: ~A,~%-> Message: \"~A\",~%-> ABAP Msg Class: \"~A\",~%-> ABAP Msg Type: \"~A\",~%-> ABAP Msg Number: \"~A\",~%-> ABAP Msg V1: \"~A\",~%-> ABAP Msg V2: \"~A\",~%-> ABAP Msg V3: \"~A\",~%-> ABAP MSg V4: \"~A\""
 	    (rfc-error-group-to-string (group r))
 	    (code r)
 	    (group r)
