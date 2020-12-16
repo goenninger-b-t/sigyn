@@ -40,6 +40,7 @@
    #:connect
    #:disconnect
    #:ensure-connected
+   #:force-reconnect
    #:with-connection
    #:connection-outdated-p
 
@@ -70,6 +71,7 @@
    #:clear-table
    #:client-table-row-write
    #:client-table-row-read
+   #:rows
 
    ))
 

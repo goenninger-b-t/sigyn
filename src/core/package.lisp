@@ -115,6 +115,13 @@
 
    #:rfc-condition
    #:rfc-error
+   #:abap-application-failure
+   #:abap-runtime-failure
+   #:logon-failure
+   #:communication-failure
+   #:external-runtime-failure
+   #:external-application-failure
+   #:external-authorization-failure
 
    #:ensure-member
 

@@ -244,8 +244,17 @@
 
 (declaim (inline signal-rfc-condition))
 (defun signal-rfc-condition (rfc-error-info &optional (on-error :signal-error))
-  (let ((condition (make-condition 'rfc-error
-				   :rfc-error-info rfc-error-info)))
+  (let* ((condition-class (case (group rfc-error-info)
+			    (:abap-application-failure       'abap-application-failure)
+			    (:abap-runtime-failure           'abap-runtime-failure)
+			    (:logon-failure                  'logon-failure)
+			    (:communication-failure          'communication-failure)
+			    (:external-runtime-failure       'external-runtime-failure)
+			    (:external-application-failure   'external-application-failure)
+			    (:external-authorization-failure 'external-authorization-failure)
+			    (otherwise                       'rfc-error)))
+	 (condition (make-condition condition-class
+				    :rfc-error-info rfc-error-info)))
     (if (eql on-error :signal-error)
 	(error condition)
 	(signal condition)))

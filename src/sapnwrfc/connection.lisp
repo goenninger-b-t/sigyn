@@ -134,6 +134,12 @@
     (%do-ensure-connected self))
   self)
 
+(defmethod force-reconnect ((self connection))
+  (with-connection-locked (self)
+    (%do-disconnect self)
+    (%do-connect self))
+  self)
+
 (defmacro with-connection ((var connection) &body body)
   `(let ((,var ,connection))
      (check-type ,var connection)
