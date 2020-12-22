@@ -26,4 +26,4 @@ Generally you can report problems by [opening an issue](https://github.com/goenn
 * Patience.
 
 ## Contact
-Currently, this repository is managed by Frank Goenninger (a.k.a. as "frgo"). He may be reached via email at [frank.goenninger@goenninger.net](mailto:frank.goenninger@goenninger.net) or via mobile phone on +49 175 4321058.
+Currently, this repository is managed by Frank Goenninger (a.k.a. as "frgo"). He may be reached via email at [frank.goenninger@goenninger.net](mailto:frank.goenninger@goenninger.net).

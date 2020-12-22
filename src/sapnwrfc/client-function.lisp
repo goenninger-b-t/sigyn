@@ -68,32 +68,33 @@
       (client-object-read self rfc-func-handle)
       self)))
 
-(defmethod invoke ((self sapnwrfc-object) sapnwrfc-connection)
-  (let ((retries 0))
-    (handler-case (%%do-invoke self sapnwrfc-connection)
-      (rfc-error (caught-condition)
-	(log:debug "SAPNWRFC RFC Error ~S occured for function ~S." caught-condition self)
-	(incf retries)
-	(if (> retries *sapnwrfc-client-function-max-retries*)
-	    (progn
-	      (log:debug "Max nr of retrries for function ~S exceeded." self)
-	      (error 'rfc-exec-error :rfc-error-info (rfc-error-info caught-condition)))
-	    (progn
-	      (log:debug "SAPNWRFC Connection ~S: Force-reconnecting due to RFC error." sapnwrfc-connection)
-	      (force-reconnect sapnwrfc-connection)
-	      (log:debug "Invoking ~S again (retry nr ~S of max. ~S)." self retries *sapnwrfc-client-function-max-retries*)
-	      (invoke self sapnwrfc-connection))))
-      (error (caught-condition)
-	(log:error "SIGYN.SAPNWRFC: While invoking client function ~A: *** Caught error ~A: ~A !"
-		   (class-name (class-of self))
-		   caught-condition
-		   (format nil (slot-value caught-condition 'format-control) (slot-value caught-condition 'format-arguments)))
-	self)
-      (:no-error (result)
-	(declare (ignore result))
-	(log:debug "SIGYN.SAPNWRFC: Invoking client function ~A successfully completed."
-		   (class-name (class-of self)))
-	self))))
+(defmethod invoke ((self sapnwrfc-object) sapnwrfc-connection &key (retries 0))
+  (log:trace "SAPNWRFC client function ~S, retries = ~S." self retries)
+  (handler-case (%%do-invoke self sapnwrfc-connection)
+    (communication-failure (caught-condition)
+      ;; (rfc-error (caught-condition)
+      (log:error "SAPNWRFC RFC Error ~S occured for function ~S." caught-condition self)
+      (incf retries)
+      (if (> retries *sapnwrfc-client-function-max-retries*)
+	  (progn
+	    (log:error "Max nr of retrries for function ~S exceeded." self)
+	    (error 'rfc-exec-error :rfc-error-info (rfc-error-info caught-condition)))
+	  (progn
+	    (log:info "SAPNWRFC Connection ~S: Force-reconnecting due to RFC error." sapnwrfc-connection)
+	    (force-reconnect sapnwrfc-connection)
+	    (log:info "Invoking ~S again (retry nr ~S of max. ~S)." self retries *sapnwrfc-client-function-max-retries*)
+	    (invoke self sapnwrfc-connection :retries retries))))
+    (error (caught-condition)
+      (log:error "SIGYN.SAPNWRFC: While invoking client function ~A: *** Caught error ~A: ~A !"
+		 (class-name (class-of self))
+		 caught-condition
+		 (format nil (slot-value caught-condition 'format-control) (slot-value caught-condition 'format-arguments)))
+      self)
+    (:no-error (result)
+      (declare (ignore result))
+      (log:debug "SIGYN.SAPNWRFC: Invoking client function ~A successfully completed."
+		 (class-name (class-of self)))
+      self)))
 
 (defmacro define-client-function (class-name direct-superclasses direct-slots &rest options)
   `(eval-when (:compile-toplevel :load-toplevel :execute)
