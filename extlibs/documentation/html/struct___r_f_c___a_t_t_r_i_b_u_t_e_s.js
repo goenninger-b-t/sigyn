@@ -1,0 +1,28 @@
+var struct___r_f_c___a_t_t_r_i_b_u_t_e_s =
+[
+    [ "client", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#ab49af0266a6c233a16b63a555ad57cc9", null ],
+    [ "codepage", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#aa1b6f0b745762f13322d5d2c8e9f71bd", null ],
+    [ "cpicConvId", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#aa0d9fba558d08eb03d627a08d4612f8c", null ],
+    [ "dest", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#ac12ed9fe29f58d57ca8e00f4de5f8d26", null ],
+    [ "host", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#aa621cfc9ec084cb0a7077814f79cb114", null ],
+    [ "isoLanguage", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#aeeba183eac1c918a075bfc4f19ba07e8", null ],
+    [ "kernelRel", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#ae68384c12127e45b29f939aa92f64266", null ],
+    [ "language", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#a6ff947dc392f2787663eb8afd0e145a2", null ],
+    [ "partnerBytesPerChar", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#a321c5b7c3a8471e9a74ae252824378d1", null ],
+    [ "partnerCodepage", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#aec2e78f82ee5c3d800eecad38b228e5e", null ],
+    [ "partnerHost", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#a508cb905e22875779ebf7df7b316eb1d", null ],
+    [ "partnerIP", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#a296bc8d12035708fb178c2860433e29d", null ],
+    [ "partnerIPv6", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#aee6ab45062f5658c4fb69dae5860c232", null ],
+    [ "partnerRel", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#ae3c283f065e9523744096f081eaeac66", null ],
+    [ "partnerSystemCodepage", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#a45205858adb01b29ad63e11dfd8b74de", null ],
+    [ "partnerType", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#a5552895ebd47c6aed28a8600bda1093d", null ],
+    [ "progName", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#ad9f03d64a9d26b5b778ff8462e0ba870", null ],
+    [ "rel", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#a567aecfc1561d1838fa919d9c9c053af", null ],
+    [ "reserved", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#aea475f4e81935e14b8efe7e951f0c52b", null ],
+    [ "rfcRole", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#a2d1baaeadb4106e201607089a4742c53", null ],
+    [ "sysId", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#ad2fb26bfc9de91496bd8980e2f9fec02", null ],
+    [ "sysNumber", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#ab3fb88ef0bae9247b334d05563790811", null ],
+    [ "trace", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#aae258e8152c702f531c55f6ca78feabd", null ],
+    [ "type", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#a8e2610634ba3e8dd0f1ba8a04968f618", null ],
+    [ "user", "struct___r_f_c___a_t_t_r_i_b_u_t_e_s.html#a64cf4508db46a45836272117d90f06ae", null ]
+];

@@ -8,7 +8,7 @@
 ;;; ---------------------------------------------------------------------------
 
 (defparameter *sapnwrfc-foreign-libdir*
-  #p "/var/data/swdev/sigyn/extlibs/linux/nwrfc750P_3-70002752/nwrfcsdk/lib/")
+  #p "/var/data/swdev/sigyn/extlibs/linux/nwrfc750P_8-70002752/nwrfcsdk/lib/")
 
 (defparameter *loaded-libs* nil)
 

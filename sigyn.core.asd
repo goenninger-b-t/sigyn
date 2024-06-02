@@ -12,7 +12,8 @@
 		 :trivial-features
 		 :alexandria
 		 :serapeum
-		 :cffi-libffi)
+		 :cffi-libffi
+		 :log4cl)
     :serial t
     :components
     ((:module sigyn.core

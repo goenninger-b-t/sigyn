@@ -113,6 +113,11 @@
    #:rfc-register-server
    #:rfc-listen-and-dispatch
 
+   #:rfc-create-server
+   #:rfc-destroy-server
+   #:rfc-launch-server
+   #:rfc-shutdown-server
+
    #:rfc-condition
    #:rfc-error
    #:abap-application-failure
