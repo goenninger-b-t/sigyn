@@ -1,4 +1,4 @@
-<img src="https://github.com/goenningerbt/sigyn/raw/main/images/sigyn.png" height="200"/> [Deity, wife of Loki](https://en.wikipedia.org/wiki/Sigyn)
+<img src="https://github.com/goenninger-b-t/sigyn/raw/main/images/sigyn.png" height="200"/> [Deity, wife of Loki](https://en.wikipedia.org/wiki/Sigyn)
 
 # SIGYN
 
