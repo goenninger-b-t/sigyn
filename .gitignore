@@ -16,18 +16,22 @@
 *.sx32fsl
 *.wx64fsl
 *.wx32fsl
+autoloads.*
+genapp*
 
 # ---> macOS
 # General
 .DS_Store
 .AppleDouble
 .LSOverride
+*.dylib
 
 # Icon must end with two \r
 Icon
 
 # Thumbnails
 ._*
+._.*
 
 # Files that might appear in the root of a volume
 .DocumentRevisions-V100
@@ -47,6 +51,7 @@ Temporary Items
 
 # ---> Linux
 *~
+*.so
 
 # temporary files which can be created if a process still has a handle open of a deleted file
 .fuse_hidden*
@@ -62,3 +67,31 @@ Temporary Items
 
 # ---> Vi/ Vim
 *.sw?
+*.vim
+
+# ---> Emacs
+*#*
+*.#*
+
+# ---> Misc
+#bin/
+obj/
+*.spv
+#docs/
+doc/
+
+# ---> C/C++
+
+*.o
+
+# ---> ThingBone specific
+*compile_flags.t*
+*_version.h
+./etc/
+output/
+
+# ---> IntelliJ IDEA
+.idea/*
+
+# ---> Sigyn specific
+extlibs/downloads*/
