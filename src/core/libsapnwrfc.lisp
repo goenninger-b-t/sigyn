@@ -8,20 +8,19 @@
 ;;; ---------------------------------------------------------------------------
 
 (defparameter *sapnwrfc-foreign-libdir*
-  #p "/var/data/swdev/sigyn/extlibs/linux/nwrfc750P_8-70002752/nwrfcsdk/lib/")
+  #p "/var/data/projects/swdev/sigyn/extlibs/linux/nwrfc750P_17-70002752/nwrfcsdk/lib/")
 
 (defparameter *loaded-libs* nil)
 
 (defun sapnwrfc-lib-dir ()
-  *sapnwrfc-foreign-libdir*)
+  (or (uiop:getenv "GBT_SIGYN_SAPNWRFC_LIB_DIR") *sapnwrfc-foreign-libdir*))
 
 (defun (setf sapnwrfc-lib-dir) (lib-dir)
   (setq *sapnwrfc-foreign-libdir* lib-dir))
 
 (defparameter *sapnwrfc-foreign-libs*
   #+linux
-  '("libicudecnumber.so"
-    "libicudata.so.50"
+  '("libicudata.so.50"
     "libicuuc.so.50"
     "libicui18n.so.50"
     "libsapucum.so"
@@ -36,7 +35,7 @@
   (pushnew (sapnwrfc-lib-dir) cffi:*foreign-library-directories* :test #'equal)
   (loop for lib in lib-list
      do
-       (let ((loaded-lib (cffi:load-foreign-library lib)))
+       (let ((loaded-lib (cffi:load-foreign-library lib )))
 	 (when loaded-lib
 	   (pushnew loaded-lib *loaded-libs*)))))
 

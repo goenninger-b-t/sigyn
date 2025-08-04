@@ -353,7 +353,7 @@
 
 (let ((initialized-p nil))
 
-  (defun rfc-init (&key (load-libs t) (lib-dir *sapnwrfc-foreign-libdir*))
+  (defun rfc-init (&key (load-libs t) (lib-dir (sapnwrfc-lib-dir)))
     (if (not initialized-p)
 	(progn
 	  (when lib-dir
