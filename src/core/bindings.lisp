@@ -230,6 +230,10 @@
   :rfc-abap-class-exception
   :rfc-unknown-error
   :rfc-authorization-failure
+  :rfc-authentication-failure
+  :rfc-cryptolib-failure
+  :rfc-io-failure
+  :rfc-locking-failure
   :rfc-rc-max-value)
 
 (cffi:defcenum rfc-error-group
@@ -240,7 +244,10 @@
   :communication-failure
   :external-runtime-failure
   :external-application-failure
-  :external-authorization-failure)
+  :external-authorization-failure
+  :external-authentication-failure
+  :cryptolib-failure
+  :locking-failure)
 
 ;; (cffi:defcstruct rfc-error-info
 ;;   (code rfc-rc)
@@ -305,7 +312,9 @@
   (user (:pointer sap-uc))
   (prog-name (:pointer sap-uc))
   (snc-name (:pointer sap-uc))
-  (sso-ticket (:pointer sap-uc)))
+  (sso-ticket (:pointer sap-uc))
+  (snc-acl-key (:pointer sap-uc))
+  (snc-acl-key-length :uint))
 
 (cffi:defctype p-rfc-security-attributes (:pointer (:struct rfc-security-attributes)))
 
@@ -341,20 +350,37 @@
 
 (cffi:defcenum rfc-call-type
   :rfc-synchrnonous
-  :rfc-transaction
+  :rfc-transactional
   :rfc-queued
   :rfc-background-unit)
 
 (cffi:defcstruct rfc-server-context
-		 (type rfc-call-type)
-		 (tid rfc-tid)
-		 (unit-identifier (:pointer (:struct rfc-unit-identifier)))
-		 (unit-attributes (:pointer (:struct rfc-unit-attributes)))
-		 (is-stateful :uint)
-		 (session-id (:array sap-uc 33)))
+  (type rfc-call-type)
+  (tid rfc-tid)
+  (unit-identifier (:pointer (:struct rfc-unit-identifier)))
+  (unit-attributes (:pointer (:struct rfc-unit-attributes)))
+  (is-stateful :uint)
+  (session-id (:array sap-uc 33))
+  (queue-names-count :uint)
+  (queue-names (:pointer (:pouinter sap-uc))))
+
+(cffi:defcenum rfc-authentication-type
+  :rfc-auth-none
+  :rfc-auth-basic
+  :rfc-auth-x509
+  :rfc-auth-sso)
+
+(cffi:defcstruct rfc-certificate-data-struct
+  (subject (:pointer sap-uc))
+  (issuer (:pointer sap-uc))
+  (valid-to sap-ullong)
+  (valid-from sap-ullong)
+  (signature (:poiunter sap-uc))
+  (next (:pointer (:struct rfc-certificate-data-struct))))
+
 
 (cffi:defcstruct rfc-type-desc-handle-struct
-		 (handle (:pointer :void)))
+  (handle (:pointer :void)))
 
 (cffi:defctype rfc-type-desc-handle (:pointer (:struct rfc-type-desc-handle-struct)))
 
@@ -382,6 +408,11 @@
 
 (cffi:defctype rfc-throughput-handle (:pointer (:struct rfc-throughput-handle-struct)))
 
+(cffi:defcstruct rfc-authentication-handle-struct
+  (handle (:pointer :void)))
+
+(cffi:defctype rfc-authentication-handle (:pointer (:struct rfc-authentication-handle-struct)))
+
 (cffi:defcstruct rfc-connection-handle-struct
   (handle (:pointer :void)))
 
@@ -399,7 +430,11 @@
   :rfc-registered-server
   :rfc-multi-count-registered-server
   :rfc-tcp-socket-client
-  :rfc-tcp-socket-server)
+  :rfc-tcp-socket-server
+  :rfc-websocket-client
+  :rfc-websocket-server
+  :rfc-proxy-websocket-client
+  )
 
 (cffi:defcenum rfc-server-state
   :rfc-server-initial
@@ -414,7 +449,8 @@
   (type rfc-protocol-type)
   (registration-count :uint)
   (state rfc-server-state)
-  (current-busy-count :uint))
+  (current-busy-count :uint)
+  (peak-busy-count :uint))
 
 (cffi:defcenum rfc-session-event
   :rfc-session-created
@@ -444,12 +480,12 @@
 		 (last-activity :time))
 
 (cffi:defcstruct rfc-transaction-handle-struct
-		 (handle (:pointer :void)))
+  (handle (:pointer :void)))
 
 (cffi:defctype rfc-transaction-handle (:pointer (:struct rfc-transaction-handle-struct)))
 
 (cffi:defcstruct rfc-unit-handle-struct
-		 (handle (:pointer :void)))
+  (handle (:pointer :void)))
 
 (cffi:defctype rfc-unit-handle (:pointer (:struct rfc-transaction-handle-struct)))
 
@@ -540,6 +576,10 @@
 (cffi:defctype rfc-on-get-unit-state (:pointer :void))
 (cffi:defctype rfc-on-password-change (:pointer :void))
 (cffi:defctype rfc-on-authorization-check (:pointer :void))
+(cffi:defctype rfc-on-authentication-check (:pointer :void))
+
+(cffi:defcfun ("RfcInit" %rfc-init) :rfc-rc ())
+(cffi:defcfun ("RfcCleanup" %rfc-cleanup) :rfc-rc ())
 
 (cffi:defcfun ("RfcGetVersion" %rfc-get-version) (:pointer sap-uc)
   (major-version (:pointer :uint))
@@ -579,11 +619,45 @@
   (timeout :uint)
   (error-info (:pointer (:struct rfc-error-info))))
 
+(cffi:defcfun ("RfcSetSocketTraceLevel" %rfc-set-socket-trace-level) rfc-rc
+  (trace-level :uint)
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcLoadCryptoLibrary" %rfc-load-crypto-library) rfc-rc
+  (path-to-libary (:pointer sap-uc))
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcSetWebsocketPingInterval" %rfc-set-websocket-ping-interval) rfc-rc
+  (ping-interval :uint)
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcSetWebsocketPongTimeout" %rfc-set-websocket-pong-timeout) rfc-rc
+  (pong-timeout :uint)
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcSetMaximumTraceFileSize" %rfc-set-maximum-trace-file-size) rfc-rc
+  (size :uint)
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcSetMaximumStoredTraceFiles" %rfc-set-maximum-stored-trace-files) rfc-rc
+  (number-of-files :uint)
+  (error-info (:pointer (:struct rfc-error-info))))
+
 (cffi:defcfun ("RfcUTF8ToSAPUC" %rfc-utf8-to-sap-uc) rfc-rc
   (utf8 (:pointer rfc-byte))
   (utf8-length :uint)
   (sapuc (:pointer sap-uc))
   (result-length (:pointer :uint))
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcUTF8ToSAPUC_CCE" %rfc-utf8-to-sap-uc-cce) rfc-rc
+  (utf8 (:pointer rfc-byte))
+  (utf8-length :uint)
+  (sapuc (:pointer sap-uc))
+  (sapuc-size (:pointer :uint))
+  (result-length (:pointer :uint))
+  (on-cce :ushort)
+  (substitute :uint)
   (error-info (:pointer (:struct rfc-error-info))))
 
 (cffi:defcfun ("RfcSAPUCToUTF8" %rfc-sap-uc-to-utf8) rfc-rc
@@ -593,6 +667,17 @@
   (utf8-size (:pointer :uint))
   (result-length (:pointer :uint))
   (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcSAPUCToUTF8_CCE" %rfc-sap-uc-to-utf8) rfc-rc
+  (sapuc (:pointer sap-uc))
+  (sapuc-length :uint)
+  (utf8 (:pointer rfc-byte))
+  (utf8-size (:pointer :uint))
+  (result-length (:pointer :uint))
+  (on-cce :ushort)
+  (substitute :uint)
+  (error-info (:pointer (:struct rfc-error-info))))
+
 
 (cffi:defcfun ("RfcGetRcAsString" %rfc-get-rc-as-string) (:pointer sap-uc)
   (rc rfc-rc))
@@ -652,7 +737,7 @@
 
 (cffi:defcfun ("RfcStartServer" %rfc-start-server) rfc-connection-handle
 	      (argc :int)
-	      (argv (:pointer sap-uc))
+	      (argv (:pointer (:pointer sap-uc)))
 	      (connection-params (:pointer (:struct rfc-connection-parameter)))
 	      (param-count :uint)
 	      (error-info (:pointer (:struct rfc-error-info))))
@@ -692,6 +777,19 @@
   (rfc-handle rfc-connection-handle)
   (sap-router (:pointer sap-uc))
   (length (:pointer :uint))
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcGetPartnerExternalIP" %rfc-get-partner-external-ip) rfc-rc
+  (rfc-handle rfc-connection-handle)
+  (partner-external-ip (:pointer sap-uc))
+  (length (:pointer :uint))
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcGetLocalAddress" %rfc-get-local-address) rfc-rc
+  (rfc-handle rfc-connection-handle)
+  (local-address (:pointer sap-uc))
+  (length (:pointer :uint))
+  (local-port (:pointer :uint))
   (error-info (:pointer (:struct rfc-error-info))))
 
 (cffi:defcfun ("RfcGetPartnerSSOTicket" %rfc-get-partner-sso-ticket) rfc-rc
@@ -794,6 +892,38 @@
   (is-stateful :uint)
   (error-info (:pointer (:struct rfc-error-info))))
 
+(cffi:defcfun ("RfcInstallAuthenticationCheckHandler" %rfc-install-authentication-check-handler) rfc-rc
+  (on-authentication-check rfc-on-authentication-check)
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcGetAuthenticationType" %rfc-get-authentication-type) rfc-rc
+  (authentication-handle rfc-authentication-handle)
+  (type (:pointer rfc-authentication-type))
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcGetAuthenticationUser" %rfc-get-authentication-user) rfc-rc
+  (authentication-handle rfc-authentication-handle)
+  (user (:pointer (:pointer sap-uc)))
+  (lenght (:pointer :uint))
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcGetAuthenticationPassword" %rfc-get-authentication-password) rfc-rc
+  (authentication-handle rfc-authentication-handle)
+  (password (:pointer (:pointer sap-uc)))
+  (lenght (:pointer :uint))
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcGetAuthenticationAssertionTicket" %rfc-get-authentication-assertion-ticket) rfc-rc
+  (authentication-handle rfc-authentication-handle)
+  (assertion-ticket (:pointer (:pointer sap-uc)))
+  (lenght (:pointer :uint))
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcGetAuthenticationCertificateData" %rfc-get-authentication-certificate-data) rfc-rc
+  (authentication-handle rfc-authentication-handle)
+  (certificate-data (:pointer (:pointer rfc-certificate-data)))
+  (error-info (:pointer (:struct rfc-error-info))))
+
 (cffi:defcfun ("RfcGetTransactionID" %rfc-get-transaction-id) rfc-rc
   (connection-handle rfc-connection-handle)
   (tid rfc-tid)
@@ -818,12 +948,16 @@
   (t-handle rfc-transaction-handle)
   (error-info (:pointer (:struct rfc-error-info))))
 
+(cffi:defcfun ("RfcConfirmTransactionID" %rfc-confirm-transaction-id) rfc-rc
+  (connection-handle rfc-copnnection-handle)
+  (tid rfc-tid)
+  (error-info (:pointer (:struct rfc-error-info))))
+
 (cffi:defcfun ("RfcDestroyTransaction" %rfc-destroy-transaction) rfc-rc
   (t-handle rfc-transaction-handle)
   (error-info (:pointer (:struct rfc-error-info))))
 
-
-;;; -- NOTE: bgUnit Functions NOT INCLUDED HERE !!!
+;;; -- NOTE: bgUnit Functions NOT INCLUDED HERE !!! TODO: Implement bgUnit-related RFC bindings
 
 (cffi:defcfun ("RfcInstallServerFunction" %rfc-install-server-function) rfc-rc
   (sys-id (:pointer sap-uc))
@@ -911,6 +1045,11 @@
 
 (cffi:defcfun ("RfcAppendNewRow" %rfc-append-new-row) rfc-structure-handle
   (table-handle rfc-table-handle)
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcReserveCapacity" %rfc-reserve-capacity) rfc-structure-handle
+  (table-handle rfc-table-handle)
+  (num-rows :uint)
   (error-info (:pointer (:struct rfc-error-info))))
 
 (cffi:defcfun ("RfcAppendNewRows" %rfc-append-new-rows) rfc-structure-handle
@@ -1520,6 +1659,16 @@
   (repository-id (:pointer sap-uc))
   (error-info (:pointer (:struct rfc-error-info))))
 
+(cffi:defcfun ("RfcSaveRepository" %rfc-save-repository) rfc-rc
+  (repository-id (:pointer sap-uc))
+  (target-stream (:pointer :void)) ;; FILE *
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcLoadRepository" %rfc-load-repository) rfc-rc
+  (repository-id (:pointer sap-uc))
+  (target-stream (:pointer :void)) ;; FILE *
+  (error-info (:pointer (:struct rfc-error-info))))
+
 (cffi:defcfun ("RfcCreateTypeDesc" %rfc-create-type-desc) rfc-type-desc-handle
   (name (:pointer sap-uc))
   (error-info (:pointer (:struct rfc-error-info))))
@@ -1715,26 +1864,45 @@
   :rfc-metadata-type
   :rfc-metadata-class)
 
-;;; Note: RfcCreateMetadataQueryResult NOT INCLUDED HERE!
-;;; Note: RfcDestroyMetadataQueryResult NOT INCLUDED HERE!
-;;; Note: RfcDescribeMetadataQueryResult NOT INCLUDED HERE!
-;;; Note: RfcGetMetadataQueryFailedEntry NOT INCLUDED HERE!
-;;; Note: RfcGetMetadataQuerySucceededEntry NOT INCLUDED HERE!
-;;; Note: RfcMetadataBatchQuery NOT INCLUDED HERE!
+;;; TODO: Implement RfcCreateMetadataQueryResult
+;;; TODO: Implement RfcDestroyMetadataQueryResult
+;;; TODO: Implement RfcDescribeMetadataQueryResult!
+;;; TODO: Implement RfcGetMetadataQueryFailedEntry
+;;; TODO: Implement RfcGetMetadataQuerySucceededEntry
+;;; TODO: Implement RfcMetadataBatchQuery
+;;; TODO: Implement RfcCreateThroughput
+;;; TODO: Implement RfcDestroyThroughput
+;;; TODO: Implement RfcSetThroughputOnConnection
+;;; TODO: Implement RfcGetThroughputFromConnection
+;;; TODO: Implement RfcRemoveThroughputFromConnection
+;;; TODO: Implement RfcSetThroughputOnServer
+;;; TODO: Implement RfcGetThroughputFromServer
+;;; TODO: Implement RfcRemoveThroughputFromServer
+;;; TODO: Implement RfcResetThroughput
+;;; TODO: Implement RfcGetNumberOfCalls
+;;; TODO: Implement RfcGetTotalTime
+;;; TODO: Implement RfcGetSerializationTime
+;;; TODO: Implement RfcGetDeserializationTime
+;;; TODO: Implement RfcGetApplicationTime
+;;; TODO: Implement RfcGetServerTime
+;;; TODO: Implement RfcGetNetworkReadingTime
+;;; TODO: Implement RfcGetNetworkWritingTime
+;;; TODO: Implement RfcGetSentBytes
+;;; TODO: Implement RfcGetReceivedBytes
 
-;;; Note: RfcCreateThroughput NOT INCLUDED HERE!
-;;; Note: RfcDestroyThroughput NOT INCLUDED HERE!
-;;; Note: RfcSetThroughputOnConnection NOT INCLUDED HERE!
-;;; Note: RfcGetThroughputFromConnection NOT INCLUDED HERE!
-;;; Note: RfcRemoveThroughputFromConnection NOT INCLUDED HERE!
-;;; Note: RfcSetThroughputOnServer NOT INCLUDED HERE!
-;;; Note: RfcGetThroughputFromServer NOT INCLUDED HERE!
-;;; Note: RfcRemoveThroughputFromServer NOT INCLUDED HERE!
-;;; Note: RfcResetThroughput NOT INCLUDED HERE!
-;;; Note: RfcGetNumberOfCalls NOT INCLUDED HERE!
-;;; Note: RfcGetTotalTime NOT INCLUDED HERE!
-;;; Note: RfcGetSerializationTime NOT INCLUDED HERE!
-;;; Note: RfcGetDeserializationTime NOT INCLUDED HERE!
-;;; Note: RfcGetApplicationTime NOT INCLUDED HERE!
-;;; Note: RfcGetSentBytes NOT INCLUDED HERE!
-;;; Note: RfcGetReceivedBytes NOT INCLUDED HERE!
+(cffi:defcfun ("RfcSetMessageServerResponseTimeout" %rfc-set-message-server-response-timeout) rfc-rc
+  (timeout :uint)
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcSetMaximumCpicConversations" %rfc-set-maximum-cpic-conversations) rfc-rc
+  (max-cpic-conversations :uint)
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcGetMaximumCpicConversations" %rfc-get-maximum-cpic-conversations) rfc-rc
+  (max-cpic-conversations (:pointer :uint))
+  (error-info (:pointer (:struct rfc-error-info))))
+
+(cffi:defcfun ("RfcSetGlobalLogonTimeout" %rfc-set-global-logon-timeout) rfc-rc
+  (timeout :uint)
+  (error-info (:pointer (:struct rfc-error-info))))
+
