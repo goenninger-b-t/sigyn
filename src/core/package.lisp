@@ -25,7 +25,7 @@
 (declaim (optimize (speed 3) (compilation-speed 0) (safety 1) (debug 1)))
 
 (uiop:define-package "NET.GOENNINGER.SIGYN.CORE"
-    (:use "COMMON-LISP")
+    (:use :closer-common-lisp :alexandria)
   (:nicknames "SIGYN.CORE")
   (:export
 
@@ -129,6 +129,8 @@
    #:external-authorization-failure
 
    #:ensure-member
+
+   ;;; TODO: export missing RFC bindings
 
    ))
 

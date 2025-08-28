@@ -26,7 +26,7 @@
 (declaim (optimize (speed 1) (compilation-speed 0) (safety 3) (debug 3)))
 
 (uiop:define-package "NET.GOENNINGER.SIGYN.SAPNWRFC"
-    (:use "COMMON-LISP" "NET.GOENNINGER.SIGYN.CORE")
+    (:use "CLOSER-COMMON-LISP" "NET.GOENNINGER.SIGYN.CORE")
   (:nicknames "SIGYN.SAPNWRFC")
   (:export
 

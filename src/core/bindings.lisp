@@ -16,22 +16,22 @@
   (pushnew 'sap-on-lin cl:*features*)
   (pushnew 'sap-on-unix cl:*features*)
 
-  (defconstant +sap-short-bytes+ 2)
-  (defconstant +sap-llong-is-long+ nil)
-  (defconstant +sap-llong-is-long-long+ t)
-  (defconstant +sap-llong-bytes+ 8)
-  (defconstant +sap-ullong-bytes+ 8)
-  (defconstant +sap-date-ln+ 8)
-  (defconstant +sap-time-ln+ 6)
-  (defconstant +decf-16-max-strlen+ 25)
-  (defconstant +decf-34-max-strlen+ 43)
-  (defconstant +rfc-tid-ln+ 24)
-  (defconstant +rfc-unitid-ln+ 32)
-  (defconstant +sap-uc-ln+ 2)
-  (defconstant +sap-uc-sf+ 1)
-  (defconstant +sap-uc-align-mask+ 1)
+  (define-constant +sap-short-bytes+ 2)
+  (define-constant +sap-llong-is-long+ nil)
+  (define-constant +sap-llong-is-long-long+ t)
+  (define-constant +sap-llong-bytes+ 8)
+  (define-constant +sap-ullong-bytes+ 8)
+  (define-constant +sap-date-ln+ 8)
+  (define-constant +sap-time-ln+ 6)
+  (define-constant +decf-16-max-strlen+ 25)
+  (define-constant +decf-34-max-strlen+ 43)
+  (define-constant +rfc-tid-ln+ 24)
+  (define-constant +rfc-unitid-ln+ 32)
+  (define-constant +sap-uc-ln+ 2)
+  (define-constant +sap-uc-sf+ 1)
+  (define-constant +sap-uc-align-mask+ 1)
 
-  (defconstant +unicode-id+ "@(#)     Unicode")
+  (define-constant +unicode-id+ "@(#)     Unicode" :test #'string=)
 
   ) ;; - ] eval-when
 
@@ -249,19 +249,6 @@
   :cryptolib-failure
   :locking-failure)
 
-;; (cffi:defcstruct rfc-error-info
-;;   (code rfc-rc)
-;;   (group rfc-error-group)
-;;   (key (:array sap-uc #. (* 128 +sap-uc-ln+)))
-;;   (message (:array sap-uc #. (* 512 +sap-uc-ln+)))
-;;   (abap-msg-class (:array sap-uc #. (* 21 +sap-uc-ln+)))
-;;   (abap-msg-type (:array sap-uc #. (* 2 +sap-uc-ln+)))
-;;   (abap-msg-number (:array sap-uc #. (* 4 +sap-uc-ln+)))
-;;   (abap-msg-v1 (:array sap-uc #. (* 51 +sap-uc-ln+)))
-;;   (abap-msg-v2 (:array sap-uc #. (* 51 +sap-uc-ln+)))
-;;   (abap-msg-v3 (:array sap-uc #. (* 51 +sap-uc-ln+)))
-;;   (abap-msg-v4 (:array sap-uc #. (* 51 +sap-uc-ln+))))
-
 (cffi:defcstruct rfc-error-info
   (code rfc-rc)
   (group rfc-error-group)
@@ -362,7 +349,7 @@
   (is-stateful :uint)
   (session-id (:array sap-uc 33))
   (queue-names-count :uint)
-  (queue-names (:pointer (:pouinter sap-uc))))
+  (queue-names (:pointer (:pointer sap-uc))))
 
 (cffi:defcenum rfc-authentication-type
   :rfc-auth-none
@@ -375,7 +362,7 @@
   (issuer (:pointer sap-uc))
   (valid-to sap-ullong)
   (valid-from sap-ullong)
-  (signature (:poiunter sap-uc))
+  (signature (:pointer sap-uc))
   (next (:pointer (:struct rfc-certificate-data-struct))))
 
 
@@ -471,6 +458,7 @@
 
 (cffi:defctype rfc-server-state-change-listener (:pointer :void))
 
+;;; FIXME: Make time_t available
 #+time-t-defined
 (cffi:defcstruct rfc-server-monitor-data
 		 (client-info (:pointer (:struct rfc-attributes)))
@@ -578,8 +566,8 @@
 (cffi:defctype rfc-on-authorization-check (:pointer :void))
 (cffi:defctype rfc-on-authentication-check (:pointer :void))
 
-(cffi:defcfun ("RfcInit" %rfc-init) :rfc-rc ())
-(cffi:defcfun ("RfcCleanup" %rfc-cleanup) :rfc-rc ())
+(cffi:defcfun ("RfcInit" %rfc-init) rfc-rc)
+(cffi:defcfun ("RfcCleanup" %rfc-cleanup) rfc-rc)
 
 (cffi:defcfun ("RfcGetVersion" %rfc-get-version) (:pointer sap-uc)
   (major-version (:pointer :uint))
@@ -799,16 +787,16 @@
   (error-info (:pointer (:struct rfc-error-info))))
 
 (cffi:defcfun ("RfcGetPartnerSNCName" %rfc-get-partner-snc-name) rfc-rc
-	      (rfc-handle rfc-connection-handle)
-	      (snc-name (:pointer sap-uc))
-	      (length (:pointer :uint))
-	      (error-info (:pointer (:struct rfc-error-info))))
+  (rfc-handle rfc-connection-handle)
+  (snc-name (:pointer sap-uc))
+  (length (:pointer :uint))
+  (error-info (:pointer (:struct rfc-error-info))))
 
 (cffi:defcfun ("RfcGetPartnerSNCKey" %rfc-get-partner-snc-key) rfc-rc
-	      (rfc-handle rfc-connection-handle)
-	      (snc-key (:pointer sap-uc))
-	      (length (:pointer :uint))
-	      (error-info (:pointer (:struct rfc-error-info))))
+  (rfc-handle rfc-connection-handle)
+  (snc-key (:pointer sap-uc))
+  (length (:pointer :uint))
+  (error-info (:pointer (:struct rfc-error-info))))
 
 (cffi:defcfun ("RfcSNCNameToKey" %rfc-snc-name-to-key) rfc-rc
 	      (snc-lib (:pointer sap-uc))
@@ -858,6 +846,7 @@
   (server-atttributes (:pointer (:struct rfc-server-attributes)))
   (error-info (:pointer (:struct rfc-error-info))))
 
+;;; FIXME: Make time_t available
 #+rfc-server-minotor-data-defined
 (cffi:defcfun ("RfcGetServerConnectionMonitorData" %rfc-get-server-connection-monitor-data) rfc-rc
 	      (server-handle rfc-server-handle)
@@ -865,6 +854,7 @@
 	      (connection-data (:pointer (:pointer rfc-server-monitor-data)))
 	      (error-info (:pointer (:struct rfc-error-info))))
 
+;;; FIXME: Make time_t available
 #+rfc-server-minotor-data-defined
 (cffi:defcfun ("RfcDestroyServerConnectionMonitorData" %rfc-destroy-server-connection-monitor-data) rfc-rc
 	      (server-handle rfc-server-handle)
@@ -921,7 +911,7 @@
 
 (cffi:defcfun ("RfcGetAuthenticationCertificateData" %rfc-get-authentication-certificate-data) rfc-rc
   (authentication-handle rfc-authentication-handle)
-  (certificate-data (:pointer (:pointer rfc-certificate-data)))
+  (certificate-data (:pointer (:pointer rfc-certificate-data-struct)))
   (error-info (:pointer (:struct rfc-error-info))))
 
 (cffi:defcfun ("RfcGetTransactionID" %rfc-get-transaction-id) rfc-rc
@@ -949,7 +939,7 @@
   (error-info (:pointer (:struct rfc-error-info))))
 
 (cffi:defcfun ("RfcConfirmTransactionID" %rfc-confirm-transaction-id) rfc-rc
-  (connection-handle rfc-copnnection-handle)
+  (connection-handle rfc-connection-handle)
   (tid rfc-tid)
   (error-info (:pointer (:struct rfc-error-info))))
 
@@ -957,7 +947,7 @@
   (t-handle rfc-transaction-handle)
   (error-info (:pointer (:struct rfc-error-info))))
 
-;;; -- NOTE: bgUnit Functions NOT INCLUDED HERE !!! TODO: Implement bgUnit-related RFC bindings
+;;; TODO: Implement bgUnit-related RFC Sbindings
 
 (cffi:defcfun ("RfcInstallServerFunction" %rfc-install-server-function) rfc-rc
   (sys-id (:pointer sap-uc))
@@ -978,7 +968,7 @@
   (on-confirm-function rfc-on-confirm-transaction)
   (error-info (:pointer (:struct rfc-error-info))))
 
-;;; NOTE:  RfcInstallBgRfcHandlers NOT INCLUDED HERE
+;;; TODO: Implement RfcInstallBgRfcHandlers
 
 (cffi:defcfun ("RfcInstallPassportManager" %rfc-install-passport-manager) rfc-rc
   (on-client-call-start rfc-pm-callback)
@@ -1508,10 +1498,10 @@
   (error-info (:pointer (:struct rfc-error-info))))
 
 (cffi:defcfun ("RfcSetDecF16" %rfc-set-decf16) rfc-rc
-	      (data-handle data-container-handle)
-	      (name (:pointer sap-uc))
-	      (value rfc-decf16)
-	      (error-info (:pointer (:struct rfc-error-info))))
+  (data-handle data-container-handle)
+  (name (:pointer sap-uc))
+  (value rfc-decf16)
+  (error-info (:pointer (:struct rfc-error-info))))
 
 (cffi:defcfun ("RfcSetDecF16ByIndex" %rfc-set-decf16-by-index) rfc-rc
   (data-handle data-container-handle)
@@ -1769,8 +1759,8 @@
   (exc-desc (:pointer (:struct rfc-exception-desc)))
   (error-info (:pointer (:struct rfc-error-info))))
 
-;;; Note: RfcEnableBASXML NOT INCLUDED HERE !
-;;; Note: RfcIsBASXMLSupported NOT INCLUDED HERE !
+;;; TODO: Implement RfcEnableBASXML
+;;; TODO: Implement RfcIsBASXMLSupported
 
 (cffi:defcfun ("RfcDestroyFunctionDesc" %rfc-destroy-function-desc) rfc-rc
   (func-desc rfc-function-desc-handle)

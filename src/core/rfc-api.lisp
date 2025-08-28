@@ -724,3 +724,5 @@
     (let ((rc (%rfc-shutdown-server server-handle timeout error-info-ptr)))
       (check-and-handle-rfc-error-info error-info-ptr :on-error :ignore)
       rc)))
+
+;;; TODO: Implement API functions for new bindings

@@ -18,11 +18,11 @@
 #endif /* DECL_EXP */
 
 #ifndef SAP_API
-#ifdef SAPonNT 
+#ifdef SAPonNT
 #     define SAP_API _stdcall
 #else
 #     define SAP_API
-#endif /* SAPonNT */ 
+#endif /* SAPonNT */
 #endif /* SAP_API */
 
 #ifdef SAPonNT
