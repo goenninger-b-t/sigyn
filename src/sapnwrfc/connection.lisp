@@ -31,18 +31,18 @@
 
 (defparameter *connection-max-inactive-time* 120) ;; seconds
 
-(defclass connection ()
-  ((connection-parameters
-    :accessor connection-parameters
-    :initarg :connection-parameters
+(defclass sap-connection ()
+  (rfc-(connection-parameters
+    :accessor rfc-connection-parameters
+    :initarg :rfc-connection-parameters
     :initform (make-hash-table :test 'string=))
    (user-designator
     :reader user-designator
     :initarg :user-designator
     :initform (error "USER-DESIGNATOR required when instantiating an object of class SIGYN.SAPNWRFC:CONNECTION!"))
-   (connection-handle
-    :accessor connection-handle
-    :initarg :connection-handle
+   (rfc-connection-handle
+    :accessor rfc-connection-handle
+    :initarg :rfc-connection-handle
     :initform (cffi:null-pointer))
    (last-used
     :accessor last-used
@@ -54,7 +54,7 @@
     :reader connection-lock
     :initform (bt:make-recursive-lock (gensym "SAPNWRFC-CONNECTION-LOCK-")))))
 
-(defmethod print-object ((self connection) stream)
+(defmethod print-object ((self sap-connection) stream)
   (print-unreadable-object (self stream :type t)
     (with-slots (user-designator active-p last-used) self
       (format stream ":USER-DESIGNATOR ~A :ACTIVE-P ~S :CONNECTED-P ~S :LAST-USED ~S"
@@ -63,60 +63,60 @@
 	      (connected-p self)
 	      last-used))))
 
-(defmacro with-connection-locked ((connection) &body body)
-  `(bt:with-recursive-lock-held((connection-lock ,connection))
+(defmacro with-connection-locked ((sap-connection) &body body)
+  `(bt:with-recursive-lock-held((connection-lock ,sap-connection))
      (progn
        ,@body)))
 
-(defmethod connection-parameter ((self connection) (param-name string))
+(defmethod connection-parameter ((self sap-connection) (param-name string))
   (gethash (string-upcase param-name) (connection-parameters self)))
 
-(defmethod set-connection-parameter ((self connection) (param-name string) (value string))
+(defmethod set-connection-parameter ((self sap-connection) (param-name string) (value string))
   (setf (gethash (string-upcase param-name) (connection-parameters self)) value))
 
-(defmethod connection-parameters-as-list ((self connection))
+(defmethod connection-parameters-as-list ((self sap-connection))
   (loop for key being the hash-keys in (connection-parameters self) using (hash-value value)
 	collect (cons key value)))
 
-(defmethod set-connection-parameters ((self connection) (parameter-cons-list list))
+(defmethod set-connection-parameters ((self sap-connection) (parameter-cons-list list))
   (with-connection-locked (self)
     (loop for parameter in parameter-cons-list
 	  do
 	     (set-connection-parameter self (car parameter) (cdr parameter))))
   self)
 
-(defmethod %do-connected-p ((self connection))
+(defmethod %do-connected-p ((self sap-connection))
   (ensure-libsapnwrfc-initialized)
-  (let ((connection-handle (connection-handle self)))
+  (let ((connection-handle (rfc-connection-handle self)))
     (if (rfc-connection-handle-set-p connection-handle)
 	(rfc-connection-handle-valid-p connection-handle))))
 
-(defmethod %do-disconnect ((self connection))
-  (if (not (cffi:null-pointer-p (connection-handle self)))
+(defmethod %do-disconnect ((self sap-connection))
+  (if (not (cffi:null-pointer-p (rfc-connection-handle self)))
       (ignore-errors
-       (rfc-close-connection (connection-handle self))))
-  (setf (connection-handle self) (cffi:null-pointer)))
+       (rfc-close-connection (rfc-connection-handle self))))
+  (setf (rfc-connection-handle self) (cffi:null-pointer)))
 
-(defmethod %do-connect ((self connection))
-  (setf (connection-handle self)
+(defmethod %do-connect ((self sap-connection))
+  (setf (rfc-connection-handle self)
 	(rfc-open-connection (connection-parameters-as-list self))))
 
-(defmethod %do-ensure-connected ((self connection))
+(defmethod %do-ensure-connected ((self sap-connection))
   (if (not (%do-connected-p self))
       (%do-connect self)))
 
-(defmethod connected-p ((self connection))
+(defmethod connected-p ((self sap-connection))
   (with-connection-locked (self)
     (%do-connected-p self)))
 
-(defmethod disconnect ((self connection))
+(defmethod disconnect ((self sap-connection))
   (with-connection-locked (self)
     (unwind-protect
 	 (%do-disconnect self)
       (setf (last-used self) (local-time:now))))
   self)
 
-(defmethod connect ((self connection) &key (force nil))
+(defmethod connect ((self sap-connection) &key (force nil))
   (with-connection-locked (self)
     (unwind-protect
 	 (cond
@@ -129,20 +129,20 @@
       (setf (last-used self) (local-time:now))))
   self)
 
-(defmethod ensure-connected ((self connection))
+(defmethod ensure-connected ((self sap-connection))
   (with-connection-locked (self)
     (%do-ensure-connected self))
   self)
 
-(defmethod force-reconnect ((self connection))
+(defmethod force-reconnect ((self sap-connection))
   (with-connection-locked (self)
     (%do-disconnect self)
     (%do-connect self))
   self)
 
-(defmacro with-connection ((var connection) &body body)
+(defmacro with-sap-connection ((var connection) &body body)
   `(let ((,var ,connection))
-     (check-type ,var connection)
+     (check-type ,var sap-connection)
      (with-connection-locked (,var)
        (%do-ensure-connected ,var)
        (setf (active-p ,var) t)
@@ -153,7 +153,7 @@
 	   (setf (last-used ,var) (local-time:now))
 	   (setf (active-p ,var) nil))))))
 
-(defmethod connection-outdated-p ((self connection) &optional (inactive-time-in-seconds *connection-max-inactive-time*))
+(defmethod connection-outdated-p ((self sap-connection) &optional (inactive-time-in-seconds *connection-max-inactive-time*))
   (not (or (active-p self)
 	   (< (local-time:timestamp-difference
 	       (local-time:now) (last-used self))

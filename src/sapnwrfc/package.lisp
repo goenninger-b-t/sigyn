@@ -30,7 +30,7 @@
   (:nicknames "SIGYN.SAPNWRFC")
   (:export
 
-   #:connection
+   #:sap-connection
    #:with-connection-locked
    #:connection-parameter
    #:set-connection-parameter
@@ -41,7 +41,7 @@
    #:disconnect
    #:ensure-connected
    #:force-reconnect
-   #:with-connection
+   #:with-sap-connection
    #:connection-outdated-p
 
    #:sapnwrfc-object-class

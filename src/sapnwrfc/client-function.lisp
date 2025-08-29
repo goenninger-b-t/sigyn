@@ -60,7 +60,7 @@
 
 (defun %%do-invoke (self sapnwrfc-connection)
   (ensure-connected sapnwrfc-connection)
-  (with-connection (conn sapnwrfc-connection)
+  (with-sap-connection (conn sapnwrfc-connection)
     (let* ((rfc-connection-handle (connection-handle conn))
 	   (rfc-func-handle       (rfc-function rfc-connection-handle (rfc-object-name self))))
       (client-object-write self rfc-func-handle)
@@ -96,15 +96,19 @@
 		 (class-name (class-of self)))
       self)))
 
-(defmacro define-client-function (class-name direct-superclasses direct-slots &rest options)
+(defmacro define-client-function (fn-name direct-superclasses direct-slots &rest options)
+  (let ((g-fn-instance (gensym "FN-INSTANCE")))
   `(eval-when (:compile-toplevel :load-toplevel :execute)
-     (defclass ,class-name ,direct-superclasses ,direct-slots
+     (defclass ,fn-name ,direct-superclasses ,direct-slots
        ,@options (:rfc-object-kind :rfc-function)
        (:metaclass sapnwrfc-object-class))
-     (export ',class-name)
-     (defmethod initialize-instance :after ((self ,class-name) &key)
+     (export ',fn-name)
+     (defmethod initialize-instance :after ((self ,fn-name) &key)
        (closer-mop:set-funcallable-instance-function
 	self
 	(lambda (connection)
 	  (invoke self connection)))
-       self)))
+       self)
+     (defun ,fn-name (sigyn-sap-connection &rest args)
+       (let ((,g-fn-instance (apply #'make-instance ',fn-name args)))
+         (funcall ,g-fn-instance sigyn-sap-connection))))))
