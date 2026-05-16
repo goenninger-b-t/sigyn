@@ -52,6 +52,9 @@
    #:set-rfc-connection-parameter
    #:zero-rfc-connection-parameter
    #:print-rfc-connection-parameter
+   #:redact-connection-parameters
+   #:secret-connection-parameter-p
+   #:*secret-connection-parameter-names*
    #:free-rfc-connection-parameter-contents
    #:with-rfc-connection-parameters
 
