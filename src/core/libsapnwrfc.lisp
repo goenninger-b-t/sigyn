@@ -7,13 +7,24 @@
 
 ;;; ---------------------------------------------------------------------------
 
-(defparameter *sapnwrfc-foreign-libdir*
-  #p "/var/data/projects/swdev/sigyn/extlibs/linux/nwrfc750P_17-70002752/nwrfcsdk/lib/")
+;; Do NOT hard-code a build-machine path here. A stale or attacker-writable
+;; default directory pushed onto the foreign-library search path is a
+;; library-planting / code-execution vector. The location must be supplied
+;; explicitly via the GBT_SIGYN_SAPNWRFC_LIB_DIR environment variable or by
+;; (setf (sapnwrfc-lib-dir) #p"...").
+(defparameter *sapnwrfc-foreign-libdir* nil)
 
 (defparameter *loaded-libs* nil)
 
 (defun sapnwrfc-lib-dir ()
-  (or (uiop:getenv "GBT_SIGYN_SAPNWRFC_LIB_DIR") *sapnwrfc-foreign-libdir*))
+  (let ((dir (or (uiop:getenv "GBT_SIGYN_SAPNWRFC_LIB_DIR")
+		 *sapnwrfc-foreign-libdir*)))
+    (unless dir
+      (error "SAP NW RFC library directory is not configured. Set the ~
+GBT_SIGYN_SAPNWRFC_LIB_DIR environment variable to a trusted, ~
+non-world-writable directory containing the SAP NW RFC SDK shared ~
+libraries, or (setf (sapnwrfc-lib-dir) #p\"/path/to/nwrfcsdk/lib/\")."))
+    dir))
 
 (defun (setf sapnwrfc-lib-dir) (lib-dir)
   (setq *sapnwrfc-foreign-libdir* lib-dir))

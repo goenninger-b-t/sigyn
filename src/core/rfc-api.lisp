@@ -97,12 +97,38 @@
   (setf (cffi:foreign-slot-value ptr '(:struct rfc-connection-parameter) 'name) (cffi:null-pointer))
   (setf (cffi:foreign-slot-value ptr '(:struct rfc-connection-parameter) 'value) (cffi:null-pointer)))
 
+(defparameter *secret-connection-parameter-names*
+  '("PASSWD" "PASSWORD" "PASSWD2" "X509CERT" "MYSAPSSO2" "MYSAPSSO"
+    "SNC_LIB" "SNC_KEY" "SNC_MYNAME" "ASSERTION_TICKET" "BEARER_TOKEN"
+    "TLS_CLIENT_PEM" "TLS_CLIENT_KEYPATH" "TLS_TRUST_ALL")
+  "Connection-parameter names whose values must never be logged or printed.")
+
+(defun secret-connection-parameter-p (name)
+  (and (stringp name)
+       (member (string-upcase (string-trim " " name))
+	       *secret-connection-parameter-names*
+	       :test #'string=)))
+
+(defun redact-connection-parameters (param-alist)
+  "Return a copy of PARAM-ALIST (a list of (NAME . VALUE) conses) with the
+values of sensitive parameters replaced by \"<redacted>\". Use this before
+logging or printing connection parameters so credentials never reach logs."
+  (loop for (name . value) in param-alist
+	collect (cons name
+		      (if (secret-connection-parameter-p name)
+			  "<redacted>"
+			  value))))
+
 (declaim (inline print-rfc-connection-parameter))
 (defun print-rfc-connection-parameter (ptr &optional (stream *debug-io*))
-  (let ((name-ptr (cffi:foreign-slot-value ptr '(:struct rfc-connection-parameter) 'name))
-	(value-ptr (cffi:foreign-slot-value ptr '(:struct rfc-connection-parameter) 'value)))
+  (let* ((name-ptr (cffi:foreign-slot-value ptr '(:struct rfc-connection-parameter) 'name))
+	 (value-ptr (cffi:foreign-slot-value ptr '(:struct rfc-connection-parameter) 'value))
+	 (name (and (not (cffi:null-pointer-p name-ptr))
+		    (sap-uc-string-to-lisp name-ptr))))
     (print-unreadable-object (ptr stream :type t :identity t)
-      (format stream "~S :NAME-PTR ~S :VALUE-PTR ~S" ptr name-ptr value-ptr))))
+      (if (secret-connection-parameter-p name)
+	  (format stream "~S :NAME ~S :VALUE-PTR <redacted>" ptr name)
+	  (format stream "~S :NAME-PTR ~S :VALUE-PTR ~S" ptr name-ptr value-ptr)))))
 
 (declaim (inline free-rfc-connection-parameter))
 (defun free-rfc-connection-parameter-contents (ptr)

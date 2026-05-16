@@ -2,26 +2,36 @@
 
  ;;; --- CONNECTION ---
 
+(defun env-or (name default)
+  "Return the value of environment variable NAME, or DEFAULT if unset/empty.
+Credentials and host data MUST NOT be hard-coded in source. Provide them
+via the environment, e.g. SIGYN_SAP_USER, SIGYN_SAP_PASSWD, etc."
+  (let ((v (uiop:getenv name)))
+    (if (and v (plusp (length v))) v default)))
+
 (defun make-stu-kw0-connection ()
 
-  (let ((connection (make-instance 'connection :user-designator "luederh")))
+  (let ((connection (make-instance 'connection
+                                   :user-designator (env-or "SIGYN_SAP_USER" "TESTUSER"))))
 
-    ;; (set-connection-parameter connection "USER"      "THINGBONE")
-    ;; (set-connection-parameter connection "PASSWD"    "t3hdi5ncg5b8o4nfe3a24e9e2136fd6a6daf731e")
-    (set-connection-parameter connection "USER"      "luederh")
-    (set-connection-parameter connection "PASSWD"    "kl23060")
-    (set-connection-parameter connection "SAPROUTER" "/H/10.79.128.1/S/5890")
-    (set-connection-parameter connection "ASHOST"    "wudkw0ci")
-    (set-connection-parameter connection "SYSNR"     "00")
-    (set-connection-parameter connection "CLIENT"    "500")
-    (set-connection-parameter connection "LANG"      "EN")
-    (set-connection-parameter connection "TRACE"     "3")
+    (set-connection-parameter connection "USER"      (env-or "SIGYN_SAP_USER"      "TESTUSER"))
+    (set-connection-parameter connection "PASSWD"    (env-or "SIGYN_SAP_PASSWD"    ""))
+    (set-connection-parameter connection "SAPROUTER" (env-or "SIGYN_SAP_SAPROUTER" ""))
+    (set-connection-parameter connection "ASHOST"    (env-or "SIGYN_SAP_ASHOST"    "localhost"))
+    (set-connection-parameter connection "SYSNR"     (env-or "SIGYN_SAP_SYSNR"     "00"))
+    (set-connection-parameter connection "CLIENT"    (env-or "SIGYN_SAP_CLIENT"    "001"))
+    (set-connection-parameter connection "LANG"      (env-or "SIGYN_SAP_LANG"      "EN"))
+    ;; TRACE=3 makes the SAP NW RFC SDK write verbose dev_rfc*.trc files that
+    ;; can contain payload data. Keep tracing off unless explicitly requested.
+    (set-connection-parameter connection "TRACE"     (env-or "SIGYN_SAP_TRACE"     "0"))
 
     (with-connection (connection connection)
 
       (format *debug-io* "*** Connected to SAP KW0? ~S ~%" (connected-p connection))
       (format *debug-io* "~%*** Connecting to SAP KW0 ... ~%")
-      (format *debug-io* "*** - Using connection parameters ~S~%" (connection-parameters-as-list connection))
+      (format *debug-io* "*** - Using connection parameters ~S~%"
+              (sigyn.core:redact-connection-parameters
+               (connection-parameters-as-list connection)))
 
       (connect connection)
       (format *debug-io* "~%*** Connected to SAP KW2? ~S ~%" (connected-p connection))
