@@ -1,18 +1,28 @@
-# PROVISIONAL LICENSE — subject to confirmation (see docs/DECISIONS.md ADR-0007)
+MIT License
 
-Freya — a clean-room CLIM 2 with a GPU-only WebGPU backend.
+Copyright © 2026 Gönninger B&T UG (haftungsbeschränkt) and the Freya contributors
 
-Copyright © 2026 Gönninger B&T UG (haftungsbeschränkt), Germany.
-All rights reserved.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-This file is a PLACEHOLDER. The final license for the Freya project has not yet
-been chosen. Until it is, no license is granted to copy, modify, distribute, or
-use this software, except to the copyright holder and explicitly authorized
-parties.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-For licensing inquiries, contact: sales@goenninger.net
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
-Note: Freya links against third-party components at runtime (e.g. wgpu-native,
-SDL3, and optionally FreeType/HarfBuzz). Those components are distributed under
-their own respective licenses, which will be enumerated here once the project
-license is finalized.
+---
+
+Third-party components: Freya links against external libraries at runtime,
+each distributed under its own license — including wgpu-native (MIT/Apache-2.0),
+SDL3 (zlib), and (by default) FreeType (FTL/GPL — the FreeType License requires
+attribution) and HarfBuzz (MIT). Those licenses govern those components.

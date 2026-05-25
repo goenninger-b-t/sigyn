@@ -34,6 +34,12 @@ below it is the GPU backend (a small 2D vector + text engine on WebGPU). See
 | Platforms | Cross-platform day one (Linux/macOS/Windows) | ADR-0001 |
 | Runtime stack | SDL3 + wgpu-native | ADR-0001 |
 | Name & packages | **Freya** / `net.goenninger.freya.*` | ADR-0002 |
+| Fonts | FreeType + HarfBuzz default (pure-CL fallback) | ADR-0003 |
+| Tier-2 renderer | Built from scratch (CL + WGSL compute) | ADR-0004 |
+| Extensions (v1) | Images, gradients, beziers, drag-and-drop, tab-layout, clim-sys/clime | ADR-0005 |
+| v1 bar | **Full** CLIM 2 conformance (Phases 0–11) | ADR-0006 |
+| Headless / remote | Both first-class; headless early, remote parallel track | ADR-0007 |
+| License | MIT | ADR-0008 |
 
 Full, living decision log: [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
@@ -57,6 +63,7 @@ src/
     formatting/              Tables, graphs, borders, indenting, filling
     public/                  Public CLIM packages (clim, clim-lisp, clim-sys, clim-extensions)
   backend/                   The (only) backend: wires Silica → render + platform
+  remote/                    Headless offscreen + remote/streaming transport
 demo/                        Demos, a Listener (integration tests)
 tests/                       Unit / property / golden-image / conformance tests
 docs/                        PLAN.md, ROADMAP.md, DECISIONS.md
@@ -98,5 +105,5 @@ git push -u origin main
 
 ## License
 
-Provisional — see [`LICENSE`](LICENSE). The intended license for Freya is an
-open decision (ADR-0007).
+**MIT** — see [`LICENSE`](LICENSE) (ADR-0008). Third-party runtime dependencies
+remain under their own licenses (wgpu-native, SDL3, FreeType, HarfBuzz).

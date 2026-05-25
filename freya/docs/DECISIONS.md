@@ -7,12 +7,12 @@ and consequences. Status ∈ {Accepted, Open, Superseded}.
 |---|---|---|
 | [0001](#adr-0001--foundational-direction) | Foundational direction | Accepted |
 | [0002](#adr-0002--project-name--package-root) | Project name & package root | Accepted |
-| [0003](#adr-0003--font-dependency-posture) | Font dependency posture | Open |
-| [0004](#adr-0004--tier-2-renderer-build-vs-borrow) | Tier-2 renderer: build vs. borrow | Open |
-| [0005](#adr-0005--clim-extensions-scope-for-v1) | CLIM-EXTENSIONS scope for v1 | Open |
-| [0006](#adr-0006--v1-conformance-bar-the-clim-core-profile) | v1 conformance bar | Open |
-| [0007](#adr-0007--headlessremote-rendering-timing) | Headless/remote rendering timing | Open |
-| [0008](#adr-0008--project-license) | Project license | Open |
+| [0003](#adr-0003--font-dependency-posture) | Font dependency posture | Accepted |
+| [0004](#adr-0004--tier-2-renderer-build-vs-borrow) | Tier-2 renderer: build vs. borrow | Accepted |
+| [0005](#adr-0005--clim-extensions-scope-for-v1) | CLIM-EXTENSIONS scope for v1 | Accepted |
+| [0006](#adr-0006--v1-conformance-bar-the-clim-core-profile) | v1 conformance bar | Accepted |
+| [0007](#adr-0007--headlessremote-rendering) | Headless/remote rendering | Accepted |
+| [0008](#adr-0008--project-license) | Project license | Accepted |
 
 ---
 
@@ -58,75 +58,110 @@ accordingly.
 ---
 
 ## ADR-0003 — Font dependency posture
-**Status:** Open.
+**Status:** Accepted.
 
-**Context.** Text quality vs. dependency footprint. Options: (a) **FreeType +
-HarfBuzz** via CFFI as the default — best coverage, hinting, shaping, color
-emoji; (b) **pure-CL** default (`zpb-ttf` + `cl-vectors`) — zero C font deps,
-weaker shaping/coverage; (c) **both**, default pure-CL with FreeType/HarfBuzz
-opt-in (or vice-versa). Affects `…/ffi-text` deps and the `font-engine` default.
+**Context.** Text quality vs. dependency footprint. Options: (a) FreeType +
+HarfBuzz via CFFI as default — best coverage, hinting, shaping, color emoji;
+(b) pure-CL default (`zpb-ttf` + `cl-vectors`) — zero C font deps, weaker
+shaping/coverage; (c) both, with one as default.
 
-**Decision.** _Pending (decision walk-through)._
+**Decision.** Default to **FreeType (rasterization/hinting/metrics) + HarfBuzz
+(shaping/kerning/complex scripts)** via CFFI, behind a `font-engine` protocol. A
+**pure-CL fallback** (`zpb-ttf` + `cl-vectors`) is kept available for no-C-deps
+builds. Consistent with already depending on SDL3 + wgpu-native (C libs).
+
+**Consequences.** `…/render` depends on `…/ffi-text` for glyph rasterization;
+the pure-CL path is an optional, swappable engine. Native FreeType/HarfBuzz libs
+are discovered via env vars (`FREYA_*_LIB_DIR`), never vendored. FreeType's FTL
+attribution clause is noted in `LICENSE`. Matches ROADMAP Phase 2.
 
 ---
 
 ## ADR-0004 — Tier-2 renderer: build vs. borrow
-**Status:** Open.
+**Status:** Accepted.
 
 **Context.** The high-performance renderer (compute-coverage rasterizer) is the
-biggest technical risk. Options: (a) **build** a from-scratch Vello/piet-gpu-style
-rasterizer in CL+WGSL — fully native, highest effort; (b) **borrow** by binding
-an existing Rust engine (Vello/Lyon) through a thin C ABI — proven, far less
-effort, adds a Rust artifact; (c) **defer/decide at the Phase-10 gate** based on
-whether the Scene-API Tier-1 perf is insufficient. The Scene API makes either a
-drop-in.
+biggest technical risk. Options: (a) build from scratch in CL+WGSL; (b) borrow an
+existing Rust engine (Vello/Lyon) via a C ABI; (c) defer the choice to the
+Phase-10 gate. The Scene API makes any of these a localized swap.
 
-**Decision.** _Pending (decision walk-through)._
+**Decision.** **Build Tier-2 from scratch** — a fully-native CL + WGSL
+compute-coverage rasterizer. No Rust/C rasterizer ships in the product. Binding
+Vello/Lyon-via-C is retained **only as an emergency contingency** behind the
+Scene API if the from-scratch effort stalls against perf/quality targets. Tier-1
+(tessellation + MSAA) remains the correctness oracle throughout.
+
+**Consequences.** Highest effort/risk, but maximal "100% native CL rendering."
+ROADMAP Phase 10 is now a committed build (not a decision gate); PLAN §5.3
+updated.
 
 ---
 
 ## ADR-0005 — CLIM-EXTENSIONS scope for v1
-**Status:** Open.
+**Status:** Accepted.
 
 **Context.** Beyond the spec, real CLIM apps rely on de-facto extensions.
-Candidates: tab-layout, gradients, raster images / `draw-image`, bezier curves,
-drag-and-drop translators, pointer-documentation niceties, thread/clim-sys
-helpers, 24-bit color/opacity everywhere, rubber-banding helpers.
 
-**Decision.** _Pending (decision walk-through)._
+**Decision.** v1 includes a **broad** extension set, in three groups:
+- **Renderer-native** (nearly free from the GPU engine): raster images /
+  `draw-image` / image inks, linear & radial **gradient** inks, and
+  **bezier/arbitrary paths**.
+- **Interaction:** **drag-and-drop** presentation translators and a
+  **tab-layout** pane.
+- **clim-sys + clime niceties:** concurrency/resource helpers and stream/pane
+  quality-of-life (e.g. pointer-documentation conveniences).
+
+**Consequences.** The `clim-extensions` (`clime`) package is a first-class v1
+surface. Folded into ROADMAP Phases 1/3 (renderer-native), 6 (drag-and-drop),
+7 (tab-layout), and across clim-sys.
 
 ---
 
 ## ADR-0006 — v1 conformance bar (the "CLIM core profile")
-**Status:** Open.
+**Status:** Accepted.
 
-**Context.** Full CLIM 2 is enormous; we need a precise, testable subset that
-the first usable release (ROADMAP Phase 7 gate) must pass, and a definition of
-"done" for v1.
+**Context.** Full CLIM 2 is enormous; we needed a precise definition of "done"
+for v1.
 
-**Decision.** _Pending (decision walk-through)._
+**Decision.** v1's bar is **full CLIM 2 conformance** — ROADMAP Phases 0–11,
+including formatting and incremental redisplay, plus the ADR-0005 extension set.
+The "CLIM core profile" (Phase-7 gate) is retained as an **intermediate
+milestone** that de-risks the program, not the release bar.
+
+**Consequences.** Largest-scope target (~60–180 EM); ROADMAP estimates and the
+scope-risk mitigation updated to frame core-profile as a checkpoint.
 
 ---
 
-## ADR-0007 — Headless/remote rendering timing
-**Status:** Open.
+## ADR-0007 — Headless/remote rendering
+**Status:** Accepted.
 
-**Context.** The display-server model makes offscreen rendering (scene → image,
-no window) nearly free, which is valuable for CI golden images and potential
-server-side/remote use. Question: is headless an **early** first-class target,
-or a later nicety?
+**Context.** The display-server model makes offscreen rendering nearly free, and
+golden-image CI needs it anyway. Question: how early is headless — and remote
+streaming — a first-class target?
 
-**Decision.** _Pending (decision walk-through)._
+**Decision.** **Both early, first-class.** Headless offscreen render targets are
+a **Phase-1 deliverable** (and CI renders golden images headless). A
+**remote/streaming transport** (frame encode/diff out, input events in) is a
+dedicated **parallel track from Phase 4** in a new `…/remote` module.
+
+**Consequences.** Adds the `…/remote` ASDF system + package and ROADMAP
+"Phase R"; adds a cross-cutting "Headless & remote" concern and a scope-creep
+risk row. The wire protocol is versioned and security-hardened (Sigyn ethos).
 
 ---
 
 ## ADR-0008 — Project license
-**Status:** Open.
+**Status:** Accepted.
 
-**Context.** The repo ships a **provisional proprietary** `LICENSE` (the Sigyn
-house default). A CLIM implementation intended for reuse might warrant an
-OSI-approved license (e.g., MIT/BSD/Apache-2.0/LGPL); a commercial product might
-not. Note runtime deps carry their own licenses (wgpu-native: MIT/Apache-2.0;
-SDL3: zlib; FreeType: FTL/GPL; HarfBuzz: MIT).
+**Context.** The repo initially shipped a provisional proprietary `LICENSE`. A
+reusable CLIM framework benefits from a permissive license. Runtime deps carry
+their own licenses (wgpu-native MIT/Apache-2.0; SDL3 zlib; FreeType FTL/GPL;
+HarfBuzz MIT) — none force the choice.
 
-**Decision.** _Pending — confirm intended license._
+**Decision.** **MIT.** Maximally permissive, simplest for adoption as a
+framework.
+
+**Consequences.** `LICENSE` replaced with the MIT text (© Gönninger B&T UG and
+the Freya contributors) plus a third-party-components note (FreeType's FTL
+attribution clause called out). README updated.

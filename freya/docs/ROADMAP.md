@@ -19,10 +19,13 @@ graphics engineers*, with wide ranges because (a) clean-room CLIM means
 spec-archaeology and (b) a GPU 2D engine is genuinely research-adjacent. Rough
 totals:
 
-- **Usable “CLIM core profile” demo:** ~**9–15 EM** (Phases 0–7, core subset).
-- **Broad CLIM 2 conformance + Tier-2 performance:** ~**60–180 EM**
-  (5–15 engineer-years), comparable in scale to mature CLIMs which accreted over
-  decades. Treat the later phases as a *program*, not a sprint.
+- **Intermediate milestone — “CLIM core profile” demo:** ~**9–15 EM**
+  (Phases 0–7, core subset). This is a *checkpoint*, not the release.
+- **Freya v1 — full CLIM 2 conformance + Tier-2 performance** (ADR-0006):
+  ~**60–180 EM** (5–15 engineer-years), comparable in scale to mature CLIMs which
+  accreted over decades. v1 spans Phases 0–11 (incl. formatting, incremental
+  redisplay) plus the ADR-0005 extension set and the ADR-0007 headless/remote
+  track. Treat it as a *program*, not a sprint.
 
 These are planning figures to set expectations, **not** commitments.
 
@@ -31,14 +34,18 @@ These are planning figures to set expectations, **not** commitments.
 ## Dependency graph between phases
 
 ```
-P0 Foundations ─┬─> P1 Render Tier-1 ─┐
-                │                      ├─> P4 Silica/medium ─> P5 Recording ─> P6 Presentations/commands ─> P7 Frames/panes ─> P8 Gadgets ─> P9 Formatting/redisplay ─> P11 Apps/polish
-                ├─> P2 Text           ─┘                                                                                         │
-                └─> P3 Kernel (geometry/designs/styles) ───────────────────────┘                                  P10 Performance (Tier-2) runs alongside P7→P11
+P0 Foundations ─┬─> P1 Render Tier-1 + headless ─┐
+                │                                 ├─> P4 Silica/medium ─> P5 Recording ─> P6 Presentations/commands ─> P7 Frames/panes ─> P8 Gadgets ─> P9 Formatting/redisplay ─> P11 Apps/polish
+                ├─> P2 Text                       ─┘                                          │
+                └─> P3 Kernel (geometry/designs/styles) ─────────────┘            PR Remote/streaming runs alongside P4→P11
+                                                                                  P10 Performance (Tier-2, from scratch) runs alongside P7→P11
 ```
 
-P3 (kernel) is pure and can be built in parallel with P1/P2. P10 (Tier-2
-renderer) is an independent track gated late, swappable behind the Scene API.
+P3 (kernel) is pure and can be built in parallel with P1/P2. Headless offscreen
+rendering is a first-class P1 deliverable (ADR-0007). P10 (Tier-2 renderer) is a
+**committed from-scratch** track (ADR-0004), gated late and adopted behind the
+Scene API. PR (remote/streaming, ADR-0007) is a parallel track that needs the
+medium + event system (P4) before it can carry pixels out and input back.
 
 ---
 
@@ -79,10 +86,13 @@ existential question.
 - Paints: solid, linear/radial gradient, image/tile/pattern.
 - Batching/instancing; per-frame arena buffers.
 - **Pixmaps / render-to-texture**; layer compositing/opacity groups.
+- **Headless offscreen target** (ADR-0007): render the same Scene to an offscreen
+  texture + read back to an image with no window attached — the foundation for
+  golden-image CI and the later remote track.
 
 **Exit gate:** golden-image suite (primitives × paints × clips × transforms)
-passes on all CI targets within perceptual tolerance; throughput baseline
-recorded (rects/lines/glyph-quads per second).
+passes on all CI targets within perceptual tolerance, **rendered headless**;
+throughput baseline recorded (rects/lines/glyph-quads per second).
 
 ---
 
@@ -169,7 +179,8 @@ highlighting.
 - `define-application-frame`, frame state machine, top-level/command loop,
   frame manager.
 - **Layout protocol** (`compose-space`/`allocate-space`/space-requirements) +
-  composite panes (vbox/hbox/table/grid/spacing/outlining/scrolling/labelling).
+  composite panes (vbox/hbox/table/grid/spacing/outlining/scrolling/labelling),
+  plus the **tab-layout** pane (clime extension, ADR-0005).
 - Interaction panes (application/interactor/command-menu/title/pointer-doc).
 
 **Exit gate (the big one — “CLIM core profile” demo):** a multi-pane application
@@ -206,15 +217,39 @@ incremental redisplay measurably beats full replay on a large table.
 **Goal:** hit the high-performance targets.
 
 - Tier-2 **compute coverage rasterizer** (encode→flatten→bin→coarse→fine),
-  adopted primitive-by-primitive behind the Scene API; Tier-1 stays as fallback
-  + oracle.
-- **Decision gate:** from-scratch Tier-2 vs. binding Vello/Lyon-via-C (PLAN
-  §5.3) based on measured perf/quality.
+  **built from scratch in CL + WGSL** (ADR-0004), adopted primitive-by-primitive
+  behind the Scene API; Tier-1 stays as fallback + oracle.
+- **Contingency only:** binding Vello/Lyon-via-C (PLAN §5.3) remains a localized
+  escape hatch behind the Scene API if from-scratch perf/quality stalls — not the
+  planned path.
 - Dirty-region + **layer/texture caching**; smooth scrolling via blit + strip
   redraw; instancing everywhere; per-frame allocation elimination.
 - Profiling + the benchmark suite (below).
 
 **Exit gate:** performance targets (below) met on reference hardware.
+
+---
+
+## Phase R — Headless & remote (parallel track, from P4)
+**Goal:** run Freya with no local display and stream a session to a remote
+client (ADR-0007). Builds on the headless target from Phase 1 and the
+medium/event system from Phase 4; lands in the `…/remote` module.
+
+- **Headless sessions:** a display-server mode whose mirrors are offscreen
+  textures, driven without SDL window creation; usable in CI, batch image
+  generation, and servers.
+- **Frame egress:** capture/diff the per-frame damage regions (reusing the
+  Phase-5 damage model) and encode them (raw/PNG first; a video/codec path
+  later) for transport.
+- **Input ingress:** a transport that injects pointer/keyboard/IME events back
+  into the CLIM event queue, translated exactly like local SDL events.
+- **Protocol & security:** a minimal, versioned wire protocol; authentication,
+  backpressure, and reconnection; no world-writable transport endpoints
+  (Sigyn-ethos hardening).
+
+**Exit gate:** the Phase-7 demo frame runs headless and is fully usable over the
+remote transport from a second process/host — pixels out, input in — with
+golden-image parity against the local render.
 
 ---
 
@@ -268,11 +303,12 @@ green; conformance report published.
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| **2D GPU vector engine is a mini-Skia/Vello** (biggest technical risk) | High | Tier-1 first for correctness; Tier-2 gated late behind the Scene API; **Vello/Lyon-via-C fallback** pre-planned as the swap-in perf path |
+| **2D GPU vector engine is a mini-Skia/Vello** (biggest technical risk) | High | Tier-1 first for correctness; **from-scratch Tier-2** (ADR-0004) gated late behind the Scene API with Tier-1 as oracle; Vello/Lyon-via-C retained as a localized contingency swap, not the plan |
 | **wgpu-native ABI churn** | Med-High | Pin versions, vendor headers, regenerate bindings, gate upgrades on golden+smoke suites |
 | **macOS main-thread / GPU threading** | Med-High | Display-server model owns GPU+windows on the main thread by construction (PLAN §8) |
 | **Presentation type system complexity** | Med | closer-mop mini meta-layer; McCLIM as behavioral oracle; spec-example test corpus |
-| **Scope (full CLIM 2 is enormous)** | High | “CLIM core profile” first (Phase-7 gate); conformance-driven phase expansion; honest EM ranges |
+| **Scope (full CLIM 2 is enormous)** | High | v1 bar is **full conformance** (ADR-0006), but de-risked by shipping the “CLIM core profile” as an *intermediate milestone* (Phase-7 gate) and expanding conformance-driven; honest EM ranges |
+| **Remote/streaming scope creep** (ADR-0007) | Med | Headless reuses the P1 offscreen target + P5 damage model (cheap); the wire protocol/codec is a separate, versioned `…/remote` track that need not block local-UI progress |
 | **Broad-portability ⨯ high-perf ⨯ cross-platform tension** | High | SBCL-Linux as perf reference; `freya.compat` isolates Lisp diffs; CI fan-out at gates, not daily |
 | **Font correctness (shaping/bidi/emoji)** | Med | FreeType+HarfBuzz defaults; bidi/emoji scoped as later enhancements with room left in the design |
 | **Clean-room IP discipline** | Med | Spec is normative; McCLIM only *run* as oracle, never transcribed; provenance noted in docs |
@@ -281,10 +317,11 @@ green; conformance report published.
 
 ## Immediate next actions (if/when we start building)
 
-1. Resolve [PLAN §16 open questions](PLAN.md#16-open-questions) (name, font
-   posture, Tier-2 build-vs-borrow, extension scope, v1 conformance bar,
-   headless requirement).
-2. Stand up the repo skeleton: ASDF systems from the [module map](PLAN.md#14-module--package-map),
-   `freya.compat` v0, CI scaffold.
+1. ~~Resolve open questions~~ ✅ **Done** — all decided in
+   [`DECISIONS.md`](DECISIONS.md) (ADR-0001…0008).
+2. ~~Stand up the repo skeleton~~ ✅ **Done** — ASDF systems from the
+   [module map](PLAN.md#14-module--package-map), package skeletons, CI scaffold,
+   license, and ADR log are in place. Next: fill `…/compat` v0 and the Phase-0
+   FFI binding pipeline.
 3. Execute **Phase 0** as a hard go/no-go spike — it burns down the project’s
    single biggest existential risk (cross-platform wgpu-native from CL).

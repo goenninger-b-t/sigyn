@@ -26,7 +26,7 @@ WebGPU backend** (`wgpu-native`) on **SDL3**.
 13. [Frames, panes, layout, gadgets, look-and-feel](#13-frames-panes-layout-gadgets-look-and-feel)
 14. [Module & package map](#14-module--package-map)
 15. [Cross-cutting concerns](#15-cross-cutting-concerns)
-16. [Open questions](#16-open-questions)
+16. [Resolved decisions](#16-resolved-decisions)
 
 ---
 
@@ -251,13 +251,13 @@ the “scroll a 100k-record Listener” case. It slots in **behind the same Scen
 API**, so nothing above the medium changes. We adopt it incrementally
 (primitive-by-primitive), keeping Tier 1 as fallback and oracle.
 
-> **De-risking option (explicitly on the table):** rather than write Tier 2 from
-> scratch, we *could* bind an existing battle-tested Rust 2D engine (Vello or
-> Lyon) through a thin C ABI. That trades “100% native CL rendering” for years of
-> saved effort and proven quality. Recommendation: keep it as a **fallback
-> renderer behind the Scene API**, decide at the Phase-10 gate based on whether
-> the from-scratch Tier 2 is meeting perf/quality targets. The Scene API makes
-> this a swap, not a rewrite.
+> **Decision (ADR-0004): build Tier 2 from scratch.** Freya commits to a
+> fully-native CL + WGSL compute-coverage rasterizer — no Rust/C rasterizer in
+> the product. Binding an existing engine (Vello/Lyon via a C ABI) is retained
+> *only* as an emergency contingency if the from-scratch effort stalls against
+> perf/quality targets; because everything sits behind the Scene API, such a
+> swap would be localized, not a rewrite. Tier 1 remains the correctness oracle
+> throughout.
 
 ### 5.4 Damage, repaint, and frame scheduling
 - **Event-driven by default**: no continuous render loop; we render a surface
@@ -610,6 +610,7 @@ shorthand for the full `net.goenninger.freya.<x>`.
 | `…/formatting` | `net.goenninger.freya.formatting` → `clim` | Tables, graphs, borders, indenting, filling |
 | `…/clim` (umbrella) | `clim`, `clim-lisp`, `clim-sys`, `clim-extensions` | Public spec API surface |
 | `…/backend` | `net.goenninger.freya.backend` | Wires Silica medium/mirror/port to render + platform (**the only backend**) |
+| `…/remote` | `net.goenninger.freya.remote` | Headless offscreen targets + remote/streaming transport: frame encode/diff out, input events in (ADR-0007) |
 | `…/demo` | `net.goenninger.freya.demo` (+ `clim-demo`) | Demos, the Listener, integration tests |
 | `…/tests` | `net.goenninger.freya.tests` | Unit/property/golden-image/conformance tests |
 
@@ -641,29 +642,39 @@ shorthand for the full `net.goenninger.freya.<x>`.
 - **Determinism & testing**: a CPU reference renderer behind the Scene API +
   golden-image diffing make rendering testable without a GPU; McCLIM as a
   behavioral oracle for the upper layers.
+- **Headless & remote** (ADR-0007): the display server can target an offscreen
+  texture instead of a window surface, so the *same* render path produces images
+  with no display attached — used by golden-image CI and by the `…/remote`
+  transport, which encodes/diffs frames out to a client and feeds input events
+  back in. Designed in from the start (the display-server model already isolates
+  GPU ownership and the event queue), not retrofitted.
 - **Documentation**: the spec mapping (which symbols, which section, conformance
   notes/deviations like §5.6) maintained alongside the code.
 
 ---
 
-## 16. Open questions
+## 16. Resolved decisions
 
-These are tracked as Architecture Decision Records in
-[`DECISIONS.md`](DECISIONS.md). Status as of this revision:
+All initial open questions are now decided and tracked as Architecture Decision
+Records in [`DECISIONS.md`](DECISIONS.md):
 
-1. **Project name & package root** — ✅ **Resolved** (ADR-0001): **Freya**,
-   reverse-DNS root `net.goenninger.freya`.
-2. **Font dependency posture** — FreeType/HarfBuzz (CFFI, best quality) as
-   default vs. pure-CL (`zpb-ttf`+`cl-vectors`) default for a no-C-deps build?
-3. **Tier-2 build vs. borrow** — commit to a from-scratch compute rasterizer, or
-   pre-plan the Vello/Lyon-via-C fallback as the perf path? (Decide at Phase-10
-   gate; Scene API makes it swappable either way.)
-4. **CLIM-EXTENSIONS scope** — which de-facto extensions (tab-layout, gradients,
-   raster images, drag-and-drop, bezier curves, threads) to include in v1?
-5. **Conformance bar for v1** — define the “CLIM core profile” subset that the
-   first usable release must pass (see ROADMAP Phase exit criteria).
-6. **Headless/remote** — is server-side/headless rendering (offscreen → image)
-   an early requirement (it’s nearly free given the display-server model), or
-   strictly later?
-7. **License** — repo currently ships a provisional proprietary `LICENSE`
-   (Sigyn house default). Confirm the intended license for Freya.
+1. **Project name & package root** — ✅ **Freya**, reverse-DNS root
+   `net.goenninger.freya` (ADR-0001/0002).
+2. **Font dependency posture** — ✅ **FreeType + HarfBuzz default** (via CFFI);
+   pure-CL (`zpb-ttf`+`cl-vectors`) retained as a fallback `font-engine`
+   (ADR-0003).
+3. **Tier-2 build vs. borrow** — ✅ **Build from scratch** (CL + WGSL compute
+   rasterizer); Vello/Lyon-via-C kept only as an emergency contingency behind the
+   Scene API (ADR-0004; see §5.3).
+4. **CLIM-EXTENSIONS scope** — ✅ **Broad**: renderer-native (raster images,
+   gradients, bezier/arbitrary paths), interaction (drag-and-drop, tab-layout),
+   and clim-sys/clime niceties are all in v1 scope (ADR-0005).
+5. **Conformance bar for v1** — ✅ **Full conformance**: v1 targets the complete
+   CLIM 2 core (ROADMAP Phases 0–11) plus the ADR-0005 extension set; the
+   “CLIM core profile” (Phase-7 gate) is an *intermediate milestone*, not the v1
+   bar (ADR-0006).
+6. **Headless/remote** — ✅ **Both early, first-class**: offscreen/headless
+   render targets from Phase 1, and a remote/streaming transport developed as a
+   parallel track from Phase 4 (ADR-0007). Adds the `…/remote` module (§14).
+7. **License** — ✅ **MIT** (ADR-0008); third-party runtime deps remain under
+   their own licenses (FreeType’s FTL carries an attribution clause).

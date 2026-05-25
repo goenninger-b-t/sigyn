@@ -52,9 +52,10 @@
 ;;; GPU rendering: the Scene API + Tier-1/Tier-2 renderers + glyph atlas.
 
 (asdf:defsystem #:net.goenninger.freya/render
-  :description "Scene API and the GPU 2D vector+text renderer (Tier-1/Tier-2)."
+  :description "Scene API and the GPU 2D vector+text renderer (Tier-1 + from-scratch Tier-2)."
   :depends-on (#:net.goenninger.freya/compat
                #:net.goenninger.freya/ffi-wgpu
+               #:net.goenninger.freya/ffi-text ; FreeType/HarfBuzz default glyph engine (ADR-0003)
                #:alexandria #:static-vectors)
   :pathname "src/render/"
   :serial t
@@ -169,6 +170,16 @@
                #:net.goenninger.freya/render
                #:net.goenninger.freya/platform)
   :pathname "src/backend/"
+  :serial t
+  :components ((:file "package")))
+
+;;; --------------------------------------------------------------------------
+;;; Headless offscreen + remote/streaming transport (ADR-0007).
+
+(asdf:defsystem #:net.goenninger.freya/remote
+  :description "Headless offscreen sessions + remote streaming: frames out, input in."
+  :depends-on (#:net.goenninger.freya/backend)
+  :pathname "src/remote/"
   :serial t
   :components ((:file "package")))
 
