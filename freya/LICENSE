@@ -1,0 +1,18 @@
+# PROVISIONAL LICENSE — subject to confirmation (see docs/DECISIONS.md ADR-0007)
+
+Freya — a clean-room CLIM 2 with a GPU-only WebGPU backend.
+
+Copyright © 2026 Gönninger B&T UG (haftungsbeschränkt), Germany.
+All rights reserved.
+
+This file is a PLACEHOLDER. The final license for the Freya project has not yet
+been chosen. Until it is, no license is granted to copy, modify, distribute, or
+use this software, except to the copyright holder and explicitly authorized
+parties.
+
+For licensing inquiries, contact: sales@goenninger.net
+
+Note: Freya links against third-party components at runtime (e.g. wgpu-native,
+SDL3, and optionally FreeType/HarfBuzz). Those components are distributed under
+their own respective licenses, which will be enumerated here once the project
+license is finalized.

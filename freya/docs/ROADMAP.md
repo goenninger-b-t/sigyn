@@ -1,4 +1,4 @@
-# Bifröst — Execution Roadmap
+# Freya — Execution Roadmap
 
 Phased plan for building a clean-room **CLIM 2** with a **GPU-only WebGPU
 backend** (`wgpu-native` + SDL3). Companion to [`PLAN.md`](PLAN.md) (architecture
@@ -53,7 +53,7 @@ building anything tall on it.
   textured triangle, present.
 - **Display-server / main-thread** skeleton (§8 of PLAN): main-thread loop owns
   GPU + windows; a client thread posts a “draw” request and gets events back.
-- `bifrost.compat` v0 (threads/timers/main-thread per Lisp).
+- `freya.compat` v0 (threads/timers/main-thread per Lisp).
 - **CI** with headless GPU: lavapipe (Linux), SwiftShader/Dawn (where needed),
   on Linux+macOS+Windows; first golden-image harness.
 
@@ -253,7 +253,7 @@ green; conformance report published.
   the CPU reference renderer, perceptually diffed; run headless in CI via
   lavapipe/SwiftShader on all OSes. Guards AA quality and cross-platform parity.
 - **Behavioral oracle (McCLIM)**: run the *same* CLIM program on McCLIM and on
-  Bifröst; compare output-record structure and rendered images. Used for
+  Freya; compare output-record structure and rendered images. Used for
   validation only — **no code copied** (clean-room).
 - **Integration**: `clim-demo` + Listener as living regression tests.
 - **FFI hardening**: ASAN on the C boundary, valgrind for leaks, fuzzing the
@@ -273,7 +273,7 @@ green; conformance report published.
 | **macOS main-thread / GPU threading** | Med-High | Display-server model owns GPU+windows on the main thread by construction (PLAN §8) |
 | **Presentation type system complexity** | Med | closer-mop mini meta-layer; McCLIM as behavioral oracle; spec-example test corpus |
 | **Scope (full CLIM 2 is enormous)** | High | “CLIM core profile” first (Phase-7 gate); conformance-driven phase expansion; honest EM ranges |
-| **Broad-portability ⨯ high-perf ⨯ cross-platform tension** | High | SBCL-Linux as perf reference; `bifrost.compat` isolates Lisp diffs; CI fan-out at gates, not daily |
+| **Broad-portability ⨯ high-perf ⨯ cross-platform tension** | High | SBCL-Linux as perf reference; `freya.compat` isolates Lisp diffs; CI fan-out at gates, not daily |
 | **Font correctness (shaping/bidi/emoji)** | Med | FreeType+HarfBuzz defaults; bidi/emoji scoped as later enhancements with room left in the design |
 | **Clean-room IP discipline** | Med | Spec is normative; McCLIM only *run* as oracle, never transcribed; provenance noted in docs |
 
@@ -285,6 +285,6 @@ green; conformance report published.
    posture, Tier-2 build-vs-borrow, extension scope, v1 conformance bar,
    headless requirement).
 2. Stand up the repo skeleton: ASDF systems from the [module map](PLAN.md#14-module--package-map),
-   `bifrost.compat` v0, CI scaffold.
+   `freya.compat` v0, CI scaffold.
 3. Execute **Phase 0** as a hard go/no-go spike — it burns down the project’s
    single biggest existential risk (cross-platform wgpu-native from CL).

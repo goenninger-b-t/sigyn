@@ -1,0 +1,52 @@
+# Freya CI — skeleton.
+#
+# This workflow activates once Freya is its own repository (a workflow under a
+# subdirectory of another repo is NOT run by GitHub). Until then it documents
+# the intended matrix. See docs/ROADMAP.md "Testing & conformance strategy".
+#
+# Phase-0 goal for CI: load the system and run the (currently trivial) test
+# suite across the Lisp × OS matrix, using a software GPU for headless
+# golden-image tests (lavapipe on Linux; SwiftShader/Dawn elsewhere).
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.lisp }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        lisp: [sbcl-bin, ccl-bin, ecl]
+        exclude:
+          # Trim the matrix early; widen at phase gates (ADR-0001).
+          - { os: windows-latest, lisp: ecl }
+    steps:
+      - uses: actions/checkout@v4
+
+      # Install a Common Lisp + a system loader (ocicl or quicklisp).
+      - name: Install Lisp toolchain
+        uses: 40ants/setup-lisp@v4
+        with:
+          implementation: ${{ matrix.lisp }}
+
+      # Native deps (planned): wgpu-native (pinned), SDL3, FreeType, HarfBuzz.
+      # On CI, a software Vulkan (lavapipe) provides a headless GPU.
+      - name: Install native dependencies (placeholder)
+        run: echo "TODO: install pinned wgpu-native + SDL3 (+ lavapipe on Linux)"
+
+      - name: Load system
+        run: |
+          # TODO (Phase 0+): asdf:load-system "net.goenninger.freya"
+          echo "TODO: load net.goenninger.freya"
+
+      - name: Run tests
+        run: |
+          # TODO (Phase 0+): asdf:test-system "net.goenninger.freya"
+          echo "TODO: test net.goenninger.freya"

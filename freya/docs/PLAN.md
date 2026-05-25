@@ -1,4 +1,4 @@
-# Bifröst — Design & Architecture Plan
+# Freya — Design & Architecture Plan
 
 A clean-room, high-performance **CLIM 2** in Common Lisp with a **GPU-only
 WebGPU backend** (`wgpu-native`) on **SDL3**.
@@ -111,7 +111,7 @@ golden images.
 | Decision | Choice | Consequence we must engineer for |
 |---|---|---|
 | CLIM strategy | **Clean-room, spec-guided** | The CLIM II spec is normative. McCLIM is used only as a *behavioral oracle* (run the same program on McCLIM and compare) — **not** copied. This avoids LGPL entanglement but means we own every line and the spec's ambiguities. Budget for "read the spec, run the oracle, write tests, implement." |
-| Lisp targets | **Broad portability** | All implementation-specific code (threads, timers, FFI quirks, weak tables, finalizers, float traps, main-thread control) lives behind a thin `bifrost.compat` layer. SBCL is the **performance reference**; CCL/ECL/LispWorks are kept green in CI but may trail on perf. We avoid SBCL-only constructs in portable layers. |
+| Lisp targets | **Broad portability** | All implementation-specific code (threads, timers, FFI quirks, weak tables, finalizers, float traps, main-thread control) lives behind a thin `freya.compat` layer. SBCL is the **performance reference**; CCL/ECL/LispWorks are kept green in CI but may trail on perf. We avoid SBCL-only constructs in portable layers. |
 | Platforms | **Cross-platform day one** | Surface creation, DPI, IME, clipboard, and event quirks differ per OS. We isolate them behind SDL3 + a per-platform `surface-from-window` shim. CI must cover all three OSes, using software GPU (lavapipe / SwiftShader) for headless golden-image tests. |
 | Runtime stack | **SDL3 + wgpu-native** | One windowing/input dependency (SDL3) and one WebGPU dependency (`wgpu-native`, pinned version). Both reached via CFFI. ABI churn in `wgpu-native` is a standing risk → bindings are generated + version-pinned + wrapped. |
 
@@ -143,13 +143,13 @@ gates rather than blocking day-to-day work.
 │ Render engine:  Tier-1 (tessellate+MSAA)  │  Tier-2 (compute coverage) │
 │ glyph atlas · paints · clip masks · layer cache · pixmaps(RTT)         │   GPU-specific
 ├───────────────────────────────┬───────────────────────────────────────┤
-│ bifrost.platform: display-server loop · windows · event pump · DPI     │
+│ freya.platform: display-server loop · windows · event pump · DPI     │
 ├───────────────┬───────────────┴───────────────┬───────────────────────┤
 │ ffi.wgpu      │ ffi.sdl3                        │ ffi.text (FT/HarfBuzz)│   CFFI
 ├───────────────┴────────────────────────────────┴──────────────────────┤
 │ wgpu-native (.so/.dylib/.dll) · SDL3 · FreeType · HarfBuzz · stb_image │   native libs
 └──────────────────────────────────────────────────────────────────────┘
-            bifrost.compat (threads/timers/FFI/main-thread) spans all CL layers
+            freya.compat (threads/timers/FFI/main-thread) spans all CL layers
 ```
 
 **Reading the diagram:** everything *above* the Scene API line is renderer-blind
@@ -160,10 +160,10 @@ about the Scene API.
 
 ### Dependency rules (enforced by ASDF system boundaries)
 - CLIM kernel and everything above it **must not** reference `ffi.*` or
-  `bifrost.platform` directly — only the Scene API and Silica protocols.
+  `freya.platform` directly — only the Scene API and Silica protocols.
 - The Scene API is a CLOS protocol (generic functions) with no GPU types in its
   signatures (it speaks points, paths, paints, transforms, glyph runs).
-- `bifrost.compat` is the only place with `#+sbcl/#+ccl/...` conditionals in the
+- `freya.compat` is the only place with `#+sbcl/#+ccl/...` conditionals in the
   upper layers.
 
 ---
@@ -376,7 +376,7 @@ Three native dependencies, all via **CFFI**, all isolated in `ffi.*` systems and
   for fonts and image decoding, behind protocols with pure-CL fallbacks where
   practical.
 - **Security / robustness** (house style): env-var-driven library discovery
-  (e.g., `BIFROST_WGPU_LIB_DIR`), no hardcoded or world-writable search paths,
+  (e.g., `FREYA_WGPU_LIB_DIR`), no hardcoded or world-writable search paths,
   version validation on load, and guarded foreign calls — mirroring Sigyn’s
   hardened `libsapnwrfc` loader.
 
@@ -413,7 +413,7 @@ the matching chained surface descriptor. This is the *only* place platform
 window internals appear.
 
 ### 8.4 Lisp portability of the main thread
-`bifrost.compat` provides `run-display-server` that takes over the calling
+`freya.compat` provides `run-display-server` that takes over the calling
 (main) thread, plus a REPL-friendly trampoline (start the server, interact from
 other threads) — accounting for differences in how SBCL/CCL/ECL/LispWorks expose
 the main/foreign thread and timers.
@@ -583,34 +583,43 @@ trickiest internals.
 
 ## 14. Module & package map
 
-ASDF-system-per-module (Sigyn house style), reverse-DNS package names. Public
-CLIM packages keep their **spec-mandated names** so conformant code runs
-unchanged; internal packages live under a project prefix.
+One primary ASDF system (`net.goenninger.freya`) with **secondary systems**
+(`net.goenninger.freya/<module>`) in a single `.asd` file (idiomatic, keeps the
+repo root clean). Internal packages use the **reverse-DNS root
+`net.goenninger.freya.<module>`**. The public CLIM packages keep their
+**spec-mandated names** (`clim`, `clim-lisp`, `clim-sys`, `clim-extensions`) so
+conformant code runs unchanged. In prose and the diagram above, `freya.<x>` is
+shorthand for the full `net.goenninger.freya.<x>`.
 
 | ASDF system | Package(s) | Responsibility |
 |---|---|---|
-| `bifrost.compat` | `bifrost.compat` | Per-Lisp threads/timers/FFI/main-thread/weak-tables shims |
-| `bifrost.ffi.wgpu` | `bifrost.ffi.wgpu(.raw)` | Generated + wrapped wgpu-native bindings |
-| `bifrost.ffi.sdl3` | `bifrost.ffi.sdl3(.raw)` | SDL3 windowing/input bindings |
-| `bifrost.ffi.text` | `bifrost.ffi.text` | FreeType/HarfBuzz/image bindings (optional) |
-| `bifrost.render` | `bifrost.render`, `bifrost.scene` | Scene API + Tier-1/Tier-2 renderers, paints, clip masks, glyph atlas, pixmaps, layer cache |
-| `bifrost.platform` | `bifrost.platform` | Display-server loop, windows, surface creation, event pump, DPI |
-| `clim.geometry` | `clim` (regions/transforms) | Region algebra + affine transforms |
-| `clim.graphics` | `clim` (designs/styles/drawing) | Designs/inks, line/text styles, drawing protocol |
-| `clim.silica` | `clim`, `clim-silica` | Sheets, ports, grafts, mediums, mirrors, events |
-| `clim.recording` | `clim` | Output records + extended I/O streams |
-| `clim.presentations` | `clim` | Presentation types, methods, translators, accept/present |
-| `clim.commands` | `clim` | Commands, command tables, command processors |
-| `clim.frames` | `clim` | Frames, panes, layout protocol, redisplay |
-| `clim.gadgets` | `clim` | Gadgets + theming/look-and-feel |
-| `clim.formatting` | `clim` | Tables, graphs, borders, indenting, filling |
-| `clim` (umbrella) | `clim`, `clim-lisp`, `clim-sys`, `clim-extensions` | Public spec API surface |
-| `bifrost.backend` | `bifrost.backend` | Wires Silica medium/mirror/port to `bifrost.render` + `bifrost.platform` (**the only backend**) |
-| `clim.demo` | `clim-demo` | Demos, the Listener, integration tests |
+| `…/compat` | `net.goenninger.freya.compat` | Per-Lisp threads/timers/FFI/main-thread/weak-tables shims |
+| `…/ffi-wgpu` | `net.goenninger.freya.ffi.wgpu(.raw)` | Generated + wrapped wgpu-native bindings |
+| `…/ffi-sdl3` | `net.goenninger.freya.ffi.sdl3(.raw)` | SDL3 windowing/input bindings |
+| `…/ffi-text` | `net.goenninger.freya.ffi.text` | FreeType/HarfBuzz/image bindings (optional) |
+| `…/render` | `net.goenninger.freya.render`, `…​.scene` | Scene API + Tier-1/Tier-2 renderers, paints, clip masks, glyph atlas, pixmaps, layer cache |
+| `…/platform` | `net.goenninger.freya.platform` | Display-server loop, windows, surface creation, event pump, DPI |
+| `…/geometry` | `net.goenninger.freya.geometry` → `clim` | Region algebra + affine transforms |
+| `…/graphics` | `net.goenninger.freya.graphics` → `clim` | Designs/inks, line/text styles, drawing protocol |
+| `…/silica` | `net.goenninger.freya.silica` → `clim` | Sheets, ports, grafts, mediums, mirrors, events |
+| `…/recording` | `net.goenninger.freya.recording` → `clim` | Output records + extended I/O streams |
+| `…/presentations` | `net.goenninger.freya.presentations` → `clim` | Presentation types, methods, translators, accept/present |
+| `…/commands` | `net.goenninger.freya.commands` → `clim` | Commands, command tables, command processors |
+| `…/frames` | `net.goenninger.freya.frames` → `clim` | Frames, panes, layout protocol, redisplay |
+| `…/gadgets` | `net.goenninger.freya.gadgets` → `clim` | Gadgets + theming/look-and-feel |
+| `…/formatting` | `net.goenninger.freya.formatting` → `clim` | Tables, graphs, borders, indenting, filling |
+| `…/clim` (umbrella) | `clim`, `clim-lisp`, `clim-sys`, `clim-extensions` | Public spec API surface |
+| `…/backend` | `net.goenninger.freya.backend` | Wires Silica medium/mirror/port to render + platform (**the only backend**) |
+| `…/demo` | `net.goenninger.freya.demo` (+ `clim-demo`) | Demos, the Listener, integration tests |
+| `…/tests` | `net.goenninger.freya.tests` | Unit/property/golden-image/conformance tests |
 
-> **Naming note:** `bifrost` is a placeholder codename (a “rainbow bridge” from
-> CL to the GPU). Final naming, and whether to publish under a reverse-DNS root
-> like `net.goenninger.<name>`, is the user’s call.
+> **Note on the CLIM packages:** the upper-layer modules each build in their own
+> internal `net.goenninger.freya.<module>` package and *export into* the public
+> `clim` package via the umbrella system. The internal/public split keeps module
+> boundaries clean while presenting one spec-conformant `clim` package to apps.
+
+> **Naming:** the project is **Freya** (slug `freya`); reverse-DNS root
+> `net.goenninger.freya`. (Resolved — see `DECISIONS.md` ADR-0001.)
 
 ---
 
@@ -639,7 +648,11 @@ unchanged; internal packages live under a project prefix.
 
 ## 16. Open questions
 
-1. **Project name & package root** — keep `bifrost`, or a reverse-DNS root?
+These are tracked as Architecture Decision Records in
+[`DECISIONS.md`](DECISIONS.md). Status as of this revision:
+
+1. **Project name & package root** — ✅ **Resolved** (ADR-0001): **Freya**,
+   reverse-DNS root `net.goenninger.freya`.
 2. **Font dependency posture** — FreeType/HarfBuzz (CFFI, best quality) as
    default vs. pure-CL (`zpb-ttf`+`cl-vectors`) default for a no-C-deps build?
 3. **Tier-2 build vs. borrow** — commit to a from-scratch compute rasterizer, or
@@ -652,3 +665,5 @@ unchanged; internal packages live under a project prefix.
 6. **Headless/remote** — is server-side/headless rendering (offscreen → image)
    an early requirement (it’s nearly free given the display-server model), or
    strictly later?
+7. **License** — repo currently ships a provisional proprietary `LICENSE`
+   (Sigyn house default). Confirm the intended license for Freya.

@@ -1,0 +1,50 @@
+# Compiled Lisp fasls (all common implementations)
+*.fasl
+*.fas
+*.lx64fsl
+*.lx32fsl
+*.dx64fsl
+*.dx32fsl
+*.wx64fsl
+*.sx64fsl
+*.x86f
+*.abcl
+*.cfsl
+
+# ASDF / build output
+.cache/
+build/
+dist/
+*.core
+*.image
+
+# Dependency managers
+.qlot/
+qlfile.lock
+.bundle-libs/
+systems/
+ocicl/
+ocicl-runtime.lisp
+
+# Generated FFI bindings (regenerated from pinned headers via c2ffi)
+src/ffi/**/*.spec
+src/ffi/**/generated-*.lisp
+
+# Vendored native libs (must be provided via FREYA_*_LIB_DIR, never committed)
+extlibs/
+*.so
+*.so.*
+*.dylib
+*.dll
+
+# Golden-image test artifacts
+tests/golden/_diffs/
+tests/golden/_actual/
+
+# Editor / OS
+*~
+\#*\#
+.DS_Store
+.idea/
+.vscode/
+TAGS
