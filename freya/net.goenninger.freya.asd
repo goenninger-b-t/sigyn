@@ -8,6 +8,14 @@
 ;;;  STATUS: skeleton. Modules currently define packages only; functionality is
 ;;;  added per docs/ROADMAP.md. External Lisp dependencies are declared but need
 ;;;  not be installed to read this file.
+;;;
+;;;  ENGINEERING STANDARDS (PLAN §17): all functions/variables carry type
+;;;  declarations; the :freya-hot module set is inlined + block-compiled; two
+;;;  optimize profiles are selected by build feature — *checked* (safety 3, for
+;;;  tests/CI) and *release* (speed 3 / safety 0 in hot modules, zero runtime
+;;;  type-check cost, ADR-0009). The shared optimize policy + declaration helpers
+;;;  live in .../compat. Built-in Prometheus telemetry (.../telemetry, ADR-0010)
+;;;  compiles to nothing unless :freya-telemetry is on *features*.
 
 (cl:in-package #:cl-user)
 
@@ -15,12 +23,26 @@
 ;;; Foundation: per-Lisp shims, no GPU/CLIM knowledge.
 
 (asdf:defsystem #:net.goenninger.freya/compat
-  :description "Per-Lisp shims: threads, timers, FFI quirks, main-thread, weak tables."
+  :description "Per-Lisp shims (threads/timers/FFI/main-thread/weak-tables) + the shared optimize policy and type-declaration helpers (PLAN §17)."
   :author "Gönninger B&T <support@goenninger.net>"
-  :license "Provisional (see LICENSE)"
+  :license "MIT"
   :depends-on (#:alexandria #:bordeaux-threads #:trivial-features
                #:trivial-garbage #:closer-mop)
   :pathname "src/compat/"
+  :serial t
+  :components ((:file "package")))
+
+;;; --------------------------------------------------------------------------
+;;; Telemetry: built-in Prometheus instrumentation (ADR-0010). Zero-cost unless
+;;; :freya-telemetry is on *features*. Depended on broadly so it is "built in".
+
+(asdf:defsystem #:net.goenninger.freya/telemetry
+  :description "Built-in Prometheus metrics: registry, canonical metric set, zero-cost macros, pluggable exposers."
+  :license "MIT"
+  :depends-on (#:net.goenninger.freya/compat
+               #:prometheus
+               #:prometheus.formats.text)
+  :pathname "src/telemetry/"
   :serial t
   :components ((:file "package")))
 
@@ -54,6 +76,7 @@
 (asdf:defsystem #:net.goenninger.freya/render
   :description "Scene API and the GPU 2D vector+text renderer (Tier-1 + from-scratch Tier-2)."
   :depends-on (#:net.goenninger.freya/compat
+               #:net.goenninger.freya/telemetry
                #:net.goenninger.freya/ffi-wgpu
                #:net.goenninger.freya/ffi-text ; FreeType/HarfBuzz default glyph engine (ADR-0003)
                #:alexandria #:static-vectors)
@@ -67,6 +90,7 @@
 (asdf:defsystem #:net.goenninger.freya/platform
   :description "Display-server loop, windows, WGPU surface creation, event pump, DPI."
   :depends-on (#:net.goenninger.freya/compat
+               #:net.goenninger.freya/telemetry
                #:net.goenninger.freya/ffi-sdl3
                #:net.goenninger.freya/ffi-wgpu
                #:net.goenninger.freya/render)
@@ -124,7 +148,8 @@
 
 (asdf:defsystem #:net.goenninger.freya/frames
   :description "Application frames, panes, layout protocol, redisplay."
-  :depends-on (#:net.goenninger.freya/commands)
+  :depends-on (#:net.goenninger.freya/commands
+               #:net.goenninger.freya/telemetry)
   :pathname "src/clim/frames/"
   :serial t
   :components ((:file "package")))
@@ -168,7 +193,8 @@
   :description "The GPU-only CLIM backend: Silica medium/mirror/port over render + platform."
   :depends-on (#:net.goenninger.freya/clim
                #:net.goenninger.freya/render
-               #:net.goenninger.freya/platform)
+               #:net.goenninger.freya/platform
+               #:net.goenninger.freya/telemetry)
   :pathname "src/backend/"
   :serial t
   :components ((:file "package")))
@@ -200,11 +226,12 @@
   :description "Freya: a clean-room CLIM 2 with a GPU-only WebGPU backend."
   :author "Gönninger B&T <support@goenninger.net>"
   :maintainer "Frank Gönninger <frank.goenninger@goenninger.net>"
-  :license "Provisional (see LICENSE)"
+  :license "MIT"
   :version "0.0.1"
   :homepage "https://github.com/goenninger-b-t/freya"
   :depends-on (#:net.goenninger.freya/clim
-               #:net.goenninger.freya/backend)
+               #:net.goenninger.freya/backend
+               #:net.goenninger.freya/telemetry)
   :in-order-to ((asdf:test-op (asdf:test-op #:net.goenninger.freya/tests))))
 
 ;;; --------------------------------------------------------------------------

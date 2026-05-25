@@ -40,6 +40,8 @@ below it is the GPU backend (a small 2D vector + text engine on WebGPU). See
 | v1 bar | **Full** CLIM 2 conformance (Phases 0–11) | ADR-0006 |
 | Headless / remote | Both first-class; headless early, remote parallel track | ADR-0007 |
 | License | MIT | ADR-0008 |
+| Type & perf discipline | Typed everywhere · hot-path inlined · compile-time checks, zero runtime cost | ADR-0009 |
+| Observability | Built-in Prometheus telemetry (zero-cost when off) | ADR-0010 |
 
 Full, living decision log: [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
@@ -48,7 +50,8 @@ Full, living decision log: [`docs/DECISIONS.md`](docs/DECISIONS.md).
 ```
 net.goenninger.freya.asd     One primary system + secondary systems (…/render, …/silica, …)
 src/
-  compat/                    Per-Lisp shims (threads/timers/FFI/main-thread)
+  compat/                    Per-Lisp shims + shared optimize policy / type-decl helpers
+  telemetry/                 Built-in Prometheus metrics (zero-cost when compiled out)
   ffi/{wgpu,sdl3,text}/      CFFI bindings (generated + ergonomic wrappers)
   render/                    Scene API + Tier-1/Tier-2 renderers, glyph atlas, paints
   platform/                  Display-server loop, windows, surfaces, event pump
@@ -81,6 +84,13 @@ variables (no hardcoded/world-writable paths), e.g. `FREYA_WGPU_LIB_DIR`,
 (asdf:load-system "net.goenninger.freya")   ; loads CLIM + the GPU backend
 (asdf:test-system "net.goenninger.freya")   ; runs the test suite
 ```
+
+Two build profiles are selected by feature (ADR-0009 / PLAN §17): *checked*
+(`safety 3`, full runtime + compile-time type checks — used for tests/CI) and
+*release* (`speed 3` / `safety 0` in hot modules — compile-time-verified types,
+**zero runtime type-check cost**). Built-in Prometheus telemetry (ADR-0010) is
+enabled by adding `:freya-telemetry` to `*features*` and compiles to nothing
+otherwise.
 
 > Today these systems only define packages (skeleton). They will fail to load
 > until the external Lisp dependencies are present and the modules are filled in.

@@ -27,6 +27,7 @@ WebGPU backend** (`wgpu-native`) on **SDL3**.
 14. [Module & package map](#14-module--package-map)
 15. [Cross-cutting concerns](#15-cross-cutting-concerns)
 16. [Resolved decisions](#16-resolved-decisions)
+17. [Engineering standards (types, performance, observability)](#17-engineering-standards-types-performance-observability)
 
 ---
 
@@ -49,6 +50,13 @@ macOS, and Windows because *we* own the rendering rather than the OS.
   redisplay for editor-style edits; smooth scrolling of very large output
   records (the classic CLIM Listener stress test); thousands of live
   presentations without lag.
+- **Type-safe & zero-overhead.** Every function and variable carries a type
+  declaration; hot-path functions are inlined; type correctness is verified at
+  **compile time** while the shipped hot path carries **no runtime type-check
+  penalty** (§17, ADR-0009).
+- **Observable.** First-class, built-in **Prometheus** instrumentation of the
+  engine internals (frame/render/atlas/event/FFI/GC metrics), zero-cost when
+  compiled out (§17, ADR-0010).
 - **Portability.** Runs on multiple Common Lisps and the three desktop OSes.
 
 ### Non-goals (initially)
@@ -114,6 +122,8 @@ golden images.
 | Lisp targets | **Broad portability** | All implementation-specific code (threads, timers, FFI quirks, weak tables, finalizers, float traps, main-thread control) lives behind a thin `freya.compat` layer. SBCL is the **performance reference**; CCL/ECL/LispWorks are kept green in CI but may trail on perf. We avoid SBCL-only constructs in portable layers. |
 | Platforms | **Cross-platform day one** | Surface creation, DPI, IME, clipboard, and event quirks differ per OS. We isolate them behind SDL3 + a per-platform `surface-from-window` shim. CI must cover all three OSes, using software GPU (lavapipe / SwiftShader) for headless golden-image tests. |
 | Runtime stack | **SDL3 + wgpu-native** | One windowing/input dependency (SDL3) and one WebGPU dependency (`wgpu-native`, pinned version). Both reached via CFFI. ABI churn in `wgpu-native` is a standing risk → bindings are generated + version-pinned + wrapped. |
+| Type & perf discipline | **Pervasive type decls · hot-path inlining · compile-time checks, zero runtime cost** | Every function gets an `ftype`; every variable (special, slot, local) gets a `type`; a curated hot set is `inline` + block-compiled. Two optimize profiles: *checked* (safety 3, all runtime+compile checks — tests run here) and *release* (speed 3, safety 0 in hot modules — the compiler trusts the already-verified declarations, so no runtime checks). CI fails on type warnings / hot-module optimization notes. See §17 / ADR-0009. |
+| Observability | **Built-in Prometheus instrumentation** | A `…/telemetry` module exposes canonical engine metrics (frame/render/atlas/event/FFI/GC). Hot-path metrics are lock-free and allocation-free; the whole layer compiles to nothing without the `:freya-telemetry` feature (zero cost). Exposers (HTTP scrape / pushgateway / file) are pluggable. See §17 / ADR-0010. |
 
 **The tension to manage:** *broad portability + cross-platform day one + high
 performance* is the single most ambitious combination of the four. The roadmap
@@ -593,7 +603,8 @@ shorthand for the full `net.goenninger.freya.<x>`.
 
 | ASDF system | Package(s) | Responsibility |
 |---|---|---|
-| `…/compat` | `net.goenninger.freya.compat` | Per-Lisp threads/timers/FFI/main-thread/weak-tables shims |
+| `…/compat` | `net.goenninger.freya.compat` | Per-Lisp threads/timers/FFI/main-thread/weak-tables shims; the shared **optimize policy + type-declaration helpers** (§17) |
+| `…/telemetry` | `net.goenninger.freya.telemetry` | Built-in Prometheus metrics: registry, canonical metric set, zero-cost `with-timer`/`observe`/`counter-incf` macros, pluggable exposers (ADR-0010) |
 | `…/ffi-wgpu` | `net.goenninger.freya.ffi.wgpu(.raw)` | Generated + wrapped wgpu-native bindings |
 | `…/ffi-sdl3` | `net.goenninger.freya.ffi.sdl3(.raw)` | SDL3 windowing/input bindings |
 | `…/ffi-text` | `net.goenninger.freya.ffi.text` | FreeType/HarfBuzz/image bindings (optional) |
@@ -639,6 +650,14 @@ shorthand for the full `net.goenninger.freya.<x>`.
 - **Security/robustness** (Sigyn ethos): env-var lib discovery, no
   world-writable search paths, version pinning/validation, careful pointer
   lifetime management, ASAN/valgrind on the C boundary in CI.
+- **Type safety & zero-overhead** (§17, ADR-0009): pervasive `ftype`/`type`
+  declarations + a curated inline/block-compiled hot set; correctness verified at
+  compile time and in the *checked* (safety 3) test build, then shipped in the
+  *release* (speed 3 / safety 0 in hot modules) build with no runtime type-check
+  cost. CI gates on type warnings and hot-module optimization notes.
+- **Observability** (§17, ADR-0010): built-in Prometheus instrumentation of the
+  engine internals; lock-free, allocation-free on the hot path and compilable to
+  nothing when the `:freya-telemetry` feature is absent.
 - **Determinism & testing**: a CPU reference renderer behind the Scene API +
   golden-image diffing make rendering testable without a GPU; McCLIM as a
   behavioral oracle for the upper layers.
@@ -655,8 +674,8 @@ shorthand for the full `net.goenninger.freya.<x>`.
 
 ## 16. Resolved decisions
 
-All initial open questions are now decided and tracked as Architecture Decision
-Records in [`DECISIONS.md`](DECISIONS.md):
+All decisions are tracked as Architecture Decision Records in
+[`DECISIONS.md`](DECISIONS.md). The initial open questions:
 
 1. **Project name & package root** — ✅ **Freya**, reverse-DNS root
    `net.goenninger.freya` (ADR-0001/0002).
@@ -678,3 +697,78 @@ Records in [`DECISIONS.md`](DECISIONS.md):
    parallel track from Phase 4 (ADR-0007). Adds the `…/remote` module (§14).
 7. **License** — ✅ **MIT** (ADR-0008); third-party runtime deps remain under
    their own licenses (FreeType’s FTL carries an attribution clause).
+
+Subsequent engineering-standard decisions (see §17):
+
+8. **Type-safety & performance discipline** — ✅ pervasive type declarations,
+   hot-path inlining, compile-time checks with zero runtime penalty (ADR-0009).
+9. **Built-in observability** — ✅ Prometheus instrumentation as a first-class,
+   zero-cost-when-disabled subsystem (ADR-0010).
+
+---
+
+## 17. Engineering standards (types, performance, observability)
+
+Normative, repo-wide non-functional requirements. They apply to **all** modules
+(SBCL is the reference for type derivation/optimization; other Lisps honor the
+same declarations under their own compilers).
+
+### 17.1 Type declarations everywhere (ADR-0009)
+- **Every function** has a declared signature: `(declaim (ftype (function
+  (arg-types…) return-type) name))`, kept next to the definition. Domain types
+  are named with `deftype` (e.g. `coordinate`, `device-pixel`, `rgba8`,
+  `atlas-index`) and used in signatures rather than bare `fixnum`/`double-float`.
+- **Every variable** is typed: special/global variables via `(declaim (type …))`
+  (or `sb-ext:defglobal` for effectively-constant globals); **struct/class slots**
+  via `:type`; **every local** binding (`let`/`let*`/`do`/`multiple-value-bind`/
+  `loop … of-type`) carries a `(declare (type …))` in hot code.
+- **Boundaries** (FFI returns, parsed file data, user input) use `(the type …)`
+  / `check-type` once at the edge, so inner layers receive already-typed values.
+- **Enforcement**: a lightweight lint asserts every `defun`/`defvar`/
+  `defparameter`/`defglobal`/`defstruct` slot has an associated declaration; the
+  build additionally treats compiler type warnings as fatal (below).
+
+### 17.2 Inlining the hot path (ADR-0009)
+- A curated **`:freya-hot`** set (geometry/transform math, color/blend math,
+  scene encoders, atlas lookups, render inner loops, event translation) is
+  declared `(declaim (inline …))` immediately before definition.
+- Hot modules are **block-compiled** (ASDF `:around-compile` + SBCL
+  `:block-compile t` / `sb-ext:start-block`) so type information and inline
+  bodies propagate across functions within a module.
+- `dynamic-extent` for transient closures/buffers in hot loops; the per-frame
+  arena (§ resource lifetime) keeps the hot path allocation-free. Cold/large
+  functions are **not** inlined (avoid code bloat).
+
+### 17.3 Compile-time checks, zero runtime penalty (ADR-0009)
+Two optimization profiles, selected by build feature:
+
+| Profile | Policy | Purpose |
+|---|---|---|
+| **Checked** (dev/CI) | `(optimize (speed 1) (safety 3) (debug 2))` | Full **runtime** type checks **and** all compile-time checks. Tests run here, so any declaration that lies is caught. |
+| **Release** | `(optimize (speed 3) (safety 0) (debug 0))` in `:freya-hot` modules; `(safety 1)` elsewhere | The compiler **trusts** the declarations (already verified in the checked build) and emits **no runtime type checks** → zero overhead. |
+
+The declarations are what make `safety 0` sound: types are *verified at compile
+time* (SBCL derives and checks against the declarations) and *exercised under
+safety 3* in the test run, so the release build drops only the now-redundant
+runtime checks. **CI gate:** the release build must compile with **zero type
+warnings** and **zero optimization notes in `:freya-hot` modules**; the checked
+build must pass the full test suite. Both profiles run in CI.
+
+### 17.4 Built-in Prometheus observability (ADR-0010)
+- The `…/telemetry` module wraps the CL `prometheus` client: a registry, the
+  **canonical metric set**, and macros (`with-timer`, `observe`, `counter-incf`,
+  `gauge-set`).
+- **Canonical metrics**: frame build time, GPU submit/present latency, fps,
+  dropped frames, scene-encode time, draw-call/instance counts, glyph-atlas
+  hits/misses/evictions, GPU buffer/texture memory, event-queue depth,
+  input→present latency, command latency, incremental-redisplay patch
+  size/time, FFI call count/time, and GC/process stats (via
+  `prometheus.collectors.sbcl`/`process`).
+- **Zero-cost when off**: without the `:freya-telemetry` feature, the macros
+  expand to nothing — a minimal release carries no instrumentation. When on,
+  counters are fixnum atomics and histograms are preallocated, so the hot path
+  stays lock-free and allocation-free (and obeys §17.1–17.3).
+- **Pluggable exposers**: text-format scrape over an *optional* embedded HTTP
+  endpoint (off by default — a GUI toolkit must not force a web server),
+  pushgateway, or a file/socket sink, chosen by the host. Headless/remote
+  servers (ADR-0007) expose `/metrics` naturally.

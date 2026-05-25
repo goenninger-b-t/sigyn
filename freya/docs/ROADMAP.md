@@ -60,13 +60,25 @@ building anything tall on it.
   textured triangle, present.
 - **Display-server / main-thread** skeleton (§8 of PLAN): main-thread loop owns
   GPU + windows; a client thread posts a “draw” request and gets events back.
-- `freya.compat` v0 (threads/timers/main-thread per Lisp).
+- `freya.compat` v0 (threads/timers/main-thread per Lisp) **+ the shared
+  optimize policy and type-declaration helpers** (PLAN §17): the `checked`
+  (safety 3) and `release` (speed 3 / safety 0 in hot modules) build profiles,
+  block-compilation wiring (ASDF `:around-compile` + `:block-compile`), and the
+  `deftype` domain-type vocabulary (ADR-0009).
+- **Type/perf CI gate** (ADR-0009): release build compiles with **zero type
+  warnings** and **zero optimization notes in `:freya-hot` modules**; checked
+  build runs the suite under `safety 3`; the declaration lint runs. Both profiles
+  build in CI.
+- **Telemetry skeleton** (ADR-0010): `freya.telemetry` registry + the zero-cost
+  macro layer + a text-format exposer, behind the `:freya-telemetry` feature;
+  first metrics (frame time, present latency) wired through the Phase-0 loop.
 - **CI** with headless GPU: lavapipe (Linux), SwiftShader/Dawn (where needed),
   on Linux+macOS+Windows; first golden-image harness.
 
 **Exit gate:** a triangle renders and presents, identically, on SBCL across
 Linux(X11+Wayland)/macOS/Windows, plus on CCL/ECL on Linux; CI golden-image diff
-green; resize + DPI change handled.
+green; resize + DPI change handled; **both build profiles green** (checked tests
+pass, release builds warning/note-clean); `/metrics` exposes the first counters.
 
 **Risk burned down:** “can we even drive wgpu-native from CL cross-platform with
 correct surface creation and the macOS main-thread rule?” — the project’s #1
@@ -277,6 +289,12 @@ green; conformance report published.
 | Live presentations on screen | thousands without lag (Tier-2 culling/binning) |
 | Text | instanced glyph quads; whole paragraphs sub-ms after atlas warm |
 | Startup (cold) | window + first frame in well under a second |
+| Type checks | **0 runtime cost** in the release build (checks are compile-time only, ADR-0009) |
+| Telemetry | **0 cost** when compiled out; lock-free/allocation-free on the hot path when enabled (ADR-0010) |
+
+All timing targets are **measured via the built-in Prometheus metrics**
+(ADR-0010) and tracked over time, so regressions surface as metric deltas, not
+anecdotes.
 
 ---
 
@@ -293,9 +311,18 @@ green; conformance report published.
 - **Integration**: `clim-demo` + Listener as living regression tests.
 - **FFI hardening**: ASAN on the C boundary, valgrind for leaks, fuzzing the
   binding wrappers.
+- **Type & optimization gate** (ADR-0009): every build runs **both** optimize
+  profiles — the *checked* (`safety 3`) build must pass the full suite (so any
+  incorrect declaration is caught at runtime under test), and the *release*
+  (`speed 3` / `safety 0` in hot modules) build must compile with **zero type
+  warnings** and **zero optimization notes in `:freya-hot` modules**. A
+  declaration lint asserts every `defun`/`defvar`/`defparameter`/slot is typed.
+- **Telemetry checks** (ADR-0010): a test builds *without* `:freya-telemetry` and
+  asserts the macros vanish (no residual cost); another builds *with* it and
+  scrapes `/metrics` to verify the canonical metric set is present and well-formed.
 - **Matrix CI**: {SBCL, CCL, ECL, LispWorks?} × {Linux X11, Linux Wayland,
-  macOS, Windows}, with the full matrix gated at phase exits and a fast
-  SBCL-Linux subset on every commit.
+  macOS, Windows} × {checked, release}, with the full matrix gated at phase exits
+  and a fast SBCL-Linux subset on every commit.
 
 ---
 

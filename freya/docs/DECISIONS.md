@@ -13,6 +13,8 @@ and consequences. Status ∈ {Accepted, Open, Superseded}.
 | [0006](#adr-0006--v1-conformance-bar-the-clim-core-profile) | v1 conformance bar | Accepted |
 | [0007](#adr-0007--headlessremote-rendering) | Headless/remote rendering | Accepted |
 | [0008](#adr-0008--project-license) | Project license | Accepted |
+| [0009](#adr-0009--type-safety--performance-discipline) | Type-safety & performance discipline | Accepted |
+| [0010](#adr-0010--built-in-prometheus-telemetry) | Built-in Prometheus telemetry | Accepted |
 
 ---
 
@@ -165,3 +167,64 @@ framework.
 **Consequences.** `LICENSE` replaced with the MIT text (© Gönninger B&T UG and
 the Freya contributors) plus a third-party-components note (FreeType's FTL
 attribution clause called out). README updated.
+
+---
+
+## ADR-0009 — Type-safety & performance discipline
+**Status:** Accepted.
+
+**Context.** Requirement: all variables and all functions must carry type
+declarations; hot-path functions must be inlined; type checks must happen at
+compile time with **no runtime penalty**. These reinforce the high-performance
+goal and catch errors before they reach the GPU/FFI boundary.
+
+**Decision.**
+- **Declarations everywhere.** Every function has an `ftype`; every variable
+  (special/global, struct/class slot, and hot-code local) has a `type`; domain
+  types are named via `deftype` and used in signatures. Boundaries validate once
+  with `the`/`check-type`.
+- **Inlining.** A curated `:freya-hot` set is `(declaim (inline …))` + the hot
+  modules are **block-compiled** so types and inline bodies propagate; cold/large
+  functions are not inlined; `dynamic-extent` + per-frame arenas keep the hot
+  path allocation-free.
+- **Two optimize profiles.** *Checked* (`safety 3`) runs all compile-time **and**
+  runtime checks — tests run here. *Release* (`speed 3 / safety 0` in hot
+  modules) makes the compiler trust the already-verified declarations, emitting
+  **no runtime type checks**. Compile-time verification + the checked test run
+  are what make `safety 0` sound.
+- **CI gate.** Release build must compile with zero type warnings and zero
+  optimization notes in `:freya-hot` modules; checked build must pass the suite;
+  both profiles run in CI. A lint asserts each definition has declarations.
+
+**Consequences.** Applies to all modules; SBCL is the type-derivation reference.
+The shared optimize policy + declaration helpers live in `…/compat`. PLAN §17
+specifies it; ROADMAP Phase 0 stands up the profiles, block compilation, and the
+CI gate. Cost: more declaration ceremony and discipline in reviews.
+
+---
+
+## ADR-0010 — Built-in Prometheus telemetry
+**Status:** Accepted.
+
+**Context.** Requirement: Prometheus instrumentation must be built in — not a
+later add-on — so frame timing, GPU/atlas/event/FFI/GC behavior is observable in
+development and production, including headless/remote servers (ADR-0007).
+
+**Decision.** Add a `…/telemetry` module wrapping the CL `prometheus` client: a
+registry, a **canonical engine metric set** (frame/render/submit/present timings,
+fps, dropped frames, scene-encode time, draw-call/instance counts, atlas
+hit/miss/evict, GPU memory, event-queue depth, input→present latency, command
+latency, incremental-redisplay patch size/time, FFI call counts/time, GC/process
+stats), and macros (`with-timer`, `observe`, `counter-incf`, `gauge-set`).
+- **Zero-cost when disabled:** without the `:freya-telemetry` feature the macros
+  expand to nothing. When enabled, counters are fixnum atomics and histograms are
+  preallocated, so the hot path is lock-free/allocation-free and obeys ADR-0009.
+- **Pluggable exposers:** optional embedded HTTP scrape (off by default),
+  pushgateway, or file/socket sink — chosen by the host; a GUI toolkit must not
+  force a web server.
+
+**Consequences.** Adds the `…/telemetry` ASDF system (+ `prometheus` deps);
+`…/render`, `…/platform`, `…/backend`, `…/frames` carry instrumentation points;
+the primary system depends on telemetry so it is built in; headless/remote
+servers expose `/metrics`. ROADMAP Phase 0 adds the exporter skeleton; later
+phases populate metrics as subsystems land.

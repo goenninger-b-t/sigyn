@@ -11,6 +11,7 @@
 (fiveam:test packages-present
   "The module packages defined by the skeleton exist."
   (dolist (name '("NET.GOENNINGER.FREYA.COMPAT"
+                  "NET.GOENNINGER.FREYA.TELEMETRY"
                   "NET.GOENNINGER.FREYA.SCENE"
                   "NET.GOENNINGER.FREYA.RENDER"
                   "NET.GOENNINGER.FREYA.GEOMETRY"
