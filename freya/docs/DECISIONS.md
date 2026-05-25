@@ -15,6 +15,7 @@ and consequences. Status ∈ {Accepted, Open, Superseded}.
 | [0008](#adr-0008--project-license) | Project license | Accepted |
 | [0009](#adr-0009--type-safety--performance-discipline) | Type-safety & performance discipline | Accepted |
 | [0010](#adr-0010--built-in-prometheus-telemetry) | Built-in Prometheus telemetry | Accepted |
+| [0011](#adr-0011--primary-target-implementation-allegrocl) | Primary target implementation: AllegroCL | Accepted |
 
 ---
 
@@ -28,9 +29,9 @@ high-level strategies that reshape the whole effort.
 - **CLIM strategy:** clean-room, **spec-guided**. The CLIM II specification is
   normative; McCLIM is used only as a *behavioral oracle* (run the same program
   and compare), never copied.
-- **Lisp targets:** **broad portability** (SBCL, CCL, ECL, LispWorks, …), with
-  **SBCL as the performance reference**. Per-Lisp differences are isolated in
-  `…/compat`.
+- **Lisp targets:** **broad portability** (AllegroCL, SBCL, CCL, ECL,
+  LispWorks, …). **AllegroCL is the primary deployment target** (ADR-0011); SBCL
+  is the open dev/CI reference. Per-Lisp differences are isolated in `…/compat`.
 - **Platforms:** **cross-platform from day one** — Linux (X11+Wayland), macOS
   (Metal), Windows (D3D12/Vulkan).
 - **Runtime stack:** **SDL3** (windowing/input/IME/clipboard/HiDPI) **+
@@ -228,3 +229,34 @@ stats), and macros (`with-timer`, `observe`, `counter-incf`, `gauge-set`).
 the primary system depends on telemetry so it is built in; headless/remote
 servers expose `/metrics`. ROADMAP Phase 0 adds the exporter skeleton; later
 phases populate metrics as subsystems land.
+
+---
+
+## ADR-0011 — Primary target implementation: AllegroCL
+**Status:** Accepted.
+
+**Context.** The deployment target is **AllegroCL (ACL)**. Earlier ADR-0001 named
+SBCL the performance reference; that remains the open dev/CI engine, but the
+shipped product must run first-class on AllegroCL, which constrains how
+implementation-specific code is written.
+
+**Decision.**
+- **No unconditional implementation specifics** anywhere. The only place
+  permitted to use `#+sbcl`/`#+allegro`/… is `…/compat`, and every such branch
+  has a portable path that AllegroCL takes. (Verified: the atomic-counter and
+  timer SBCL fast paths each have a portable `#-sbcl` fallback that AllegroCL
+  uses; the portable algorithms are tested.)
+- **Portable libraries** for cross-impl concerns: `bordeaux-threads` (threads /
+  locks / condition variables), `trivial-garbage` (weak tables / finalizers),
+  `cffi` (FFI), `closer-mop` (MOP) — all support AllegroCL.
+- **Build tooling is implementation-agnostic**: `scripts/build.lisp` and
+  `scripts/test.lisp` use only portable CL + `uiop` and run under
+  `alisp -L … --` as well as `sbcl --script …`.
+- **CI** uses SBCL (open, free) for the cross-OS matrix; the **release pipeline**
+  additionally runs the suite on AllegroCL where a license is available.
+
+**Consequences.** SBCL-only constructs (`sb-ext:*`, etc.) are confined to guarded
+`#+sbcl` fast paths with portable defaults. Where an AllegroCL SMP fast path
+exists (e.g. atomics, timers), it is a later, separately-verified optimization;
+the portable path is the correctness baseline. PLAN §3 and the ROADMAP CI matrix
+are updated accordingly.

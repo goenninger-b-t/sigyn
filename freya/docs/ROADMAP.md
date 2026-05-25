@@ -75,6 +75,29 @@ building anything tall on it.
 - **CI** with headless GPU: lavapipe (Linux), SwiftShader/Dawn (where needed),
   on Linux+macOS+Windows; first golden-image harness.
 
+**Progress (software foundations — DONE, verified on SBCL):**
+- ✅ `freya.compat` v0: domain types, threads/locks/condition-vars, atomic
+  counters, weak tables/finalizers, main-thread control, timers — portable, with
+  AllegroCL taking the portable path for every shim (ADR-0011).
+- ✅ Build profiles + the strict type/perf gate: `scripts/build.lisp` /
+  `scripts/test.lisp` / `Makefile`; checked & release both compile **warning-clean**
+  (non-style warnings fatal) and the suite passes (30 checks) in checked, release,
+  and telemetry profiles, with per-profile fasl isolation.
+- ✅ Telemetry skeleton (ADR-0010): registry + zero-cost macro layer + text
+  exposer + canonical metric set; verified zero-cost when off and recording when on.
+- ✅ FFI **library loaders** for wgpu-native / SDL3 / FreeType+HarfBuzz: env-var
+  discovery (`FREYA_*_LIB_DIR`), pinned-version constants, idempotent load.
+- ✅ CI workflow (activates on repo extraction).
+
+**Remaining (needs a workstation with a GPU + native libs):**
+- ⏳ The `c2ffi` binding-generation pipeline (loaders + `scripts/gen-bindings.sh`
+  are in place; header vendoring + generation are TODO).
+- ⏳ SDL3 + wgpu-native bring-up: device/queue, surface creation, the **triangle**.
+- ⏳ Display-server / main-thread loop with the cross-thread request queue.
+- ⏳ Full **block compilation** wiring and the stricter "zero optimization notes
+  in hot modules" gate (today's gate is zero non-style warnings).
+- ⏳ Headless golden-image harness on a software GPU (lavapipe/SwiftShader).
+
 **Exit gate:** a triangle renders and presents, identically, on SBCL across
 Linux(X11+Wayland)/macOS/Windows, plus on CCL/ECL on Linux; CI golden-image diff
 green; resize + DPI change handled; **both build profiles green** (checked tests
@@ -322,7 +345,9 @@ anecdotes.
   scrapes `/metrics` to verify the canonical metric set is present and well-formed.
 - **Matrix CI**: {SBCL, CCL, ECL, LispWorks?} × {Linux X11, Linux Wayland,
   macOS, Windows} × {checked, release}, with the full matrix gated at phase exits
-  and a fast SBCL-Linux subset on every commit.
+  and a fast SBCL-Linux subset on every commit. **AllegroCL is the deployment
+  target (ADR-0011)** and runs in the release pipeline where a license is
+  available; SBCL is the open CI engine.
 
 ---
 

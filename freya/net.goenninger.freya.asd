@@ -30,7 +30,12 @@
                #:trivial-garbage #:closer-mop)
   :pathname "src/compat/"
   :serial t
-  :components ((:file "package")))
+  :components ((:file "package")
+               (:file "policy")
+               (:file "types")
+               (:file "concurrency")
+               (:file "memory")
+               (:file "scheduling")))
 
 ;;; --------------------------------------------------------------------------
 ;;; Telemetry: built-in Prometheus instrumentation (ADR-0010). Zero-cost unless
@@ -39,12 +44,15 @@
 (asdf:defsystem #:net.goenninger.freya/telemetry
   :description "Built-in Prometheus metrics: registry, canonical metric set, zero-cost macros, pluggable exposers."
   :license "MIT"
+  ;; prometheus is pulled in ONLY when :freya-telemetry is enabled, so a default
+  ;; (telemetry-off) build carries no instrumentation dependency at all.
   :depends-on (#:net.goenninger.freya/compat
-               #:prometheus
-               #:prometheus.formats.text)
+               (:feature :freya-telemetry #:prometheus)
+               (:feature :freya-telemetry #:prometheus.formats.text))
   :pathname "src/telemetry/"
   :serial t
-  :components ((:file "package")))
+  :components ((:file "package")
+               (:file "telemetry")))
 
 ;;; --------------------------------------------------------------------------
 ;;; FFI layer (CFFI). Generated raw bindings + ergonomic wrappers.
@@ -54,21 +62,24 @@
   :depends-on (#:net.goenninger.freya/compat #:cffi)
   :pathname "src/ffi/wgpu/"
   :serial t
-  :components ((:file "package")))
+  :components ((:file "package")
+               (:file "library")))
 
 (asdf:defsystem #:net.goenninger.freya/ffi-sdl3
   :description "CFFI bindings to SDL3 (windowing/input/clipboard/IME/HiDPI)."
   :depends-on (#:net.goenninger.freya/compat #:cffi)
   :pathname "src/ffi/sdl3/"
   :serial t
-  :components ((:file "package")))
+  :components ((:file "package")
+               (:file "library")))
 
 (asdf:defsystem #:net.goenninger.freya/ffi-text
   :description "Optional CFFI bindings: FreeType/HarfBuzz/image decode (ADR-0003)."
   :depends-on (#:net.goenninger.freya/compat #:cffi)
   :pathname "src/ffi/text/"
   :serial t
-  :components ((:file "package")))
+  :components ((:file "package")
+               (:file "library")))
 
 ;;; --------------------------------------------------------------------------
 ;;; GPU rendering: the Scene API + Tier-1/Tier-2 renderers + glyph atlas.

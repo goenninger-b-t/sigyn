@@ -12,4 +12,5 @@
 
 (defpackage #:net.goenninger.freya.ffi.wgpu
   (:use #:cl)
-  (:documentation "Ergonomic wgpu-native wrapper over the raw bindings."))
+  (:documentation "Ergonomic wgpu-native wrapper over the raw bindings.")
+  (:export #:+pinned-version+ #:load-libwgpu))

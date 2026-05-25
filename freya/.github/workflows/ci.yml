@@ -1,12 +1,14 @@
-# Freya CI — skeleton.
+# Freya CI.
 #
-# This workflow activates once Freya is its own repository (a workflow under a
-# subdirectory of another repo is NOT run by GitHub). Until then it documents
-# the intended matrix. See docs/ROADMAP.md "Testing & conformance strategy".
+# Activates once Freya is its own repository (a workflow in a subdirectory of
+# another repo is not run by GitHub). Paths here assume the repo root IS the
+# Freya project root (post-extraction).
 #
-# Phase-0 goal for CI: load the system and run the (currently trivial) test
-# suite across the Lisp × OS matrix, using a software GPU for headless
-# golden-image tests (lavapipe on Linux; SwiftShader/Dawn elsewhere).
+# What runs today (Phase 0, software-only): load + the §17 strict type/perf gate
+# and the test suite, in every build profile. SBCL is the open CI reference;
+# AllegroCL is the deployment target (ADR-0011) and is exercised in the release
+# pipeline where a license is available. The GPU triangle + golden-image jobs
+# arrive once the native (SDL3 + wgpu-native) bring-up lands.
 
 name: ci
 
@@ -17,36 +19,52 @@ on:
 
 jobs:
   build-and-test:
-    name: ${{ matrix.lisp }} on ${{ matrix.os }}
+    name: SBCL on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        lisp: [sbcl-bin, ccl-bin, ecl]
-        exclude:
-          # Trim the matrix early; widen at phase gates (ADR-0001).
-          - { os: windows-latest, lisp: ecl }
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
 
-      # Install a Common Lisp + a system loader (ocicl or quicklisp).
-      - name: Install Lisp toolchain
-        uses: 40ants/setup-lisp@v4
+      - name: Install SBCL (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y sbcl
+
+      - name: Install SBCL (macOS)
+        if: runner.os == 'macOS'
+        run: brew install sbcl
+
+      - name: Cache Quicklisp + fasls
+        uses: actions/cache@v4
         with:
-          implementation: ${{ matrix.lisp }}
+          path: |
+            ~/quicklisp
+            ~/.cache/freya
+          key: ql-${{ runner.os }}-${{ hashFiles('net.goenninger.freya.asd') }}
 
-      # Native deps (planned): wgpu-native (pinned), SDL3, FreeType, HarfBuzz.
-      # On CI, a software Vulkan (lavapipe) provides a headless GPU.
-      - name: Install native dependencies (placeholder)
-        run: echo "TODO: install pinned wgpu-native + SDL3 (+ lavapipe on Linux)"
-
-      - name: Load system
+      - name: Install Quicklisp (if not cached)
         run: |
-          # TODO (Phase 0+): asdf:load-system "net.goenninger.freya"
-          echo "TODO: load net.goenninger.freya"
+          if [ ! -f "$HOME/quicklisp/setup.lisp" ]; then
+            curl -sSL -o /tmp/quicklisp.lisp https://beta.quicklisp.org/quicklisp.lisp
+            sbcl --non-interactive --load /tmp/quicklisp.lisp \
+                 --eval '(quicklisp-quickstart:install)'
+          fi
 
-      - name: Run tests
-        run: |
-          # TODO (Phase 0+): asdf:test-system "net.goenninger.freya"
-          echo "TODO: test net.goenninger.freya"
+      # §17 strict type/perf gate: zero non-style warnings in either profile.
+      - name: Build — checked (strict)
+        run: make checked
+      - name: Build — release (strict)
+        run: make release
+
+      # Tests in every profile (checked / release / telemetry-enabled).
+      - name: Test — checked
+        run: make test
+      - name: Test — release
+        run: make release-test
+      - name: Test — telemetry enabled
+        run: make telemetry-test
+
+      # TODO (native bring-up): install pinned wgpu-native + SDL3 (+ lavapipe on
+      # Linux) and run the triangle smoke + headless golden-image suite.

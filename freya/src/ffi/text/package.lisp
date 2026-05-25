@@ -8,4 +8,5 @@
 
 (defpackage #:net.goenninger.freya.ffi.text
   (:use #:cl)
-  (:documentation "Optional FreeType/HarfBuzz/image-decode bindings (ADR-0003)."))
+  (:documentation "Optional FreeType/HarfBuzz/image-decode bindings (ADR-0003).")
+  (:export #:load-libfreetype #:load-libharfbuzz))

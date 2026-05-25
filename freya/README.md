@@ -30,7 +30,7 @@ below it is the GPU backend (a small 2D vector + text engine on WebGPU). See
 | Topic | Choice | ADR |
 |---|---|---|
 | CLIM strategy | Clean-room, spec-guided (McCLIM as oracle only) | ADR-0001 |
-| Lisp targets | Broad portability (SBCL is the perf reference) | ADR-0001 |
+| Lisp targets | Broad portability; **AllegroCL** is the target (SBCL = dev/CI) | ADR-0001/0011 |
 | Platforms | Cross-platform day one (Linux/macOS/Windows) | ADR-0001 |
 | Runtime stack | SDL3 + wgpu-native | ADR-0001 |
 | Name & packages | **Freya** / `net.goenninger.freya.*` | ADR-0002 |
