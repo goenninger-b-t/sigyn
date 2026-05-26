@@ -12,4 +12,5 @@
 (defpackage #:net.goenninger.freya.ffi.sdl3
   (:use #:cl)
   (:documentation "Ergonomic SDL3 wrapper (+ native-window-handle plumbing for WGPU surfaces).")
-  (:export #:+pinned-version+ #:load-libsdl3))
+  (:export #:+pinned-version+ #:load-libsdl3
+           #:sdl-get-version #:load-generated-bindings))

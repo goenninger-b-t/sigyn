@@ -70,6 +70,8 @@ src/
 demo/                        Demos, a Listener (integration tests)
 tests/                       Unit / property / golden-image / conformance tests
 docs/                        PLAN.md, ROADMAP.md, DECISIONS.md
+scripts/                     build.lisp · test.lisp · vendor-headers.sh · gen-bindings.sh
+extlibs/include/             Vendored pinned C headers (committed; matching .so via env vars)
 .github/workflows/           CI (activates once this is its own repo root)
 ```
 

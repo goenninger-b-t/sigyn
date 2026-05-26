@@ -30,8 +30,12 @@ ocicl-runtime.lisp
 src/ffi/**/*.spec
 src/ffi/**/generated-*.lisp
 
-# Vendored native libs (must be provided via FREYA_*_LIB_DIR, never committed)
-extlibs/
+# Vendored native binaries are never committed (provide via FREYA_*_LIB_DIR).
+# Vendored pinned HEADERS *are* committed under extlibs/include/ for reproducible
+# binding generation; the matching .so/.dylib/.dll comes from your environment.
+extlibs/lib/
+extlibs/bin/
+extlibs/share/
 *.so
 *.so.*
 *.dylib

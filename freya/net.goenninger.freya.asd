@@ -63,7 +63,8 @@
   :pathname "src/ffi/wgpu/"
   :serial t
   :components ((:file "package")
-               (:file "library")))
+               (:file "library")
+               (:file "bindings")))
 
 (asdf:defsystem #:net.goenninger.freya/ffi-sdl3
   :description "CFFI bindings to SDL3 (windowing/input/clipboard/IME/HiDPI)."
@@ -71,7 +72,8 @@
   :pathname "src/ffi/sdl3/"
   :serial t
   :components ((:file "package")
-               (:file "library")))
+               (:file "library")
+               (:file "bindings")))
 
 (asdf:defsystem #:net.goenninger.freya/ffi-text
   :description "Optional CFFI bindings: FreeType/HarfBuzz/image decode (ADR-0003)."

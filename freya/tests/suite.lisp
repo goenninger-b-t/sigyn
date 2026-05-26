@@ -105,6 +105,25 @@
     (fiveam:is-true (stringp txt))
     (fiveam:is-true (search "freya_frames_total" txt))))
 
+;;; --- FFI plumbing ---------------------------------------------------------
+;;; Verify the binding pipeline is wired (the defcfun forms compile and the
+;;; wrapper functions exist). Calling them requires the native library to be
+;;; available via FREYA_*_LIB_DIR; that is a Phase-0 native-bring-up concern.
+
+(fiveam:test ffi-plumbing
+  (fiveam:is-true  (fboundp 'net.goenninger.freya.ffi.wgpu:wgpu-get-version))
+  (fiveam:is-true  (fboundp 'net.goenninger.freya.ffi.sdl3:sdl-get-version))
+  (fiveam:is-true  (fboundp 'net.goenninger.freya.ffi.wgpu:load-libwgpu))
+  (fiveam:is-true  (fboundp 'net.goenninger.freya.ffi.sdl3:load-libsdl3))
+  (fiveam:is-true  (stringp net.goenninger.freya.ffi.wgpu:+pinned-version+))
+  (fiveam:is-true  (stringp net.goenninger.freya.ffi.sdl3:+pinned-version+))
+  ;; Calling the sample binding before the lib is loaded yields NIL (the
+  ;; loader guards the call), and no generated bindings file is present in CI.
+  (fiveam:is-false (net.goenninger.freya.ffi.wgpu:wgpu-get-version))
+  (fiveam:is-false (net.goenninger.freya.ffi.sdl3:sdl-get-version))
+  (fiveam:is-false (net.goenninger.freya.ffi.wgpu:load-generated-bindings))
+  (fiveam:is-false (net.goenninger.freya.ffi.sdl3:load-generated-bindings)))
+
 (defun run-all ()
   "Run the full Freya test suite. Returns T on success, NIL otherwise."
   (fiveam:run! 'freya))

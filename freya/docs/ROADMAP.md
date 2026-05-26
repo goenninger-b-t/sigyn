@@ -87,11 +87,20 @@ building anything tall on it.
   exposer + canonical metric set; verified zero-cost when off and recording when on.
 - ✅ FFI **library loaders** for wgpu-native / SDL3 / FreeType+HarfBuzz: env-var
   discovery (`FREYA_*_LIB_DIR`), pinned-version constants, idempotent load.
+- ✅ **Binding pipeline** (wgpu-native): pinned headers vendored under
+  `extlibs/include/wgpu/` (`webgpu.h` + `wgpu.h` at `v25.0.2.1`);
+  `scripts/vendor-headers.sh` refreshes them reproducibly;
+  `scripts/gen-bindings.sh` drives `c2ffi` when present (clear, actionable error
+  otherwise). Hand-written sample `defcfun` bindings (`wgpuGetVersion`,
+  `SDL_GetVersion`) exercise the FFI plumbing today; the c2ffi-generated full
+  bindings load on top automatically when produced.
 - ✅ CI workflow (activates on repo extraction).
 
 **Remaining (needs a workstation with a GPU + native libs):**
-- ⏳ The `c2ffi` binding-generation pipeline (loaders + `scripts/gen-bindings.sh`
-  are in place; header vendoring + generation are TODO).
+- ⏳ Run the full `c2ffi` generation (a c2ffi compatible with the host
+  clang/llvm — upstream tip does not build against LLVM 18; use clang 14-16).
+- ⏳ Vendor SDL3 headers + FreeType/HarfBuzz headers (Phase 2) and generate
+  their raw bindings.
 - ⏳ SDL3 + wgpu-native bring-up: device/queue, surface creation, the **triangle**.
 - ⏳ Display-server / main-thread loop with the cross-thread request queue.
 - ⏳ Full **block compilation** wiring and the stricter "zero optimization notes
